@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/CorePlatformApi.Domain/CorePlatformApi.Domain.csproj" />
+    <Project Path="src/CorePlatformApi.Application/CorePlatformApi.Application.csproj" />
+    <Project Path="src/CorePlatformApi.Infrastructure/CorePlatformApi.Infrastructure.csproj" />
+    <Project Path="src/CorePlatformApi.WebApi/CorePlatformApi.WebApi.csproj" />
+  </Folder>
+</Solution>

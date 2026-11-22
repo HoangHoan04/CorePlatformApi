@@ -1,0 +1,109 @@
+// Nguồn schema: docs/base_erp_core.sql
+using CorePlatformApi.Domain.Entities.Storage;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Storage;
+
+/// <summary>
+/// Cấu hình EF Core cho <c>storage.buckets</c>.
+/// </summary>
+public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<StorageBucket>
+{
+    public void Configure(EntityTypeBuilder<StorageBucket> builder)
+    {
+        builder.ToTable("buckets", "storage", tb =>
+        {
+            tb.HasComment("Bucket lưu trữ theo mục đích (public-assets, private-docs, hr-sensitive...)");
+            tb.HasCheckConstraint("buckets_encryption_check", "encryption IN ('NONE','SSE','SSE_KMS')");
+        });
+
+        builder.HasKey(x => x.Id).HasName("buckets_pkey");
+
+        builder.Property(x => x.Id)
+            .HasColumnName("id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(0)
+            .IsRequired()
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever()
+            .HasComment("Khóa chính");
+        builder.Property(x => x.ProviderId)
+            .HasColumnName("provider_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .IsRequired()
+            .HasComment("Provider");
+        builder.Property(x => x.Name)
+            .HasColumnName("name")
+            .HasColumnType("varchar(100)")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Tên bucket thật trên storage");
+        builder.Property(x => x.Purpose)
+            .HasColumnName("purpose")
+            .HasColumnType("varchar(100)")
+            .HasColumnOrder(3)
+            .HasComment("Mục đích sử dụng");
+        builder.Property(x => x.IsPublic)
+            .HasColumnName("is_public")
+            .HasColumnType("boolean")
+            .HasColumnOrder(4)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cho phép đọc công khai");
+        builder.Property(x => x.Versioning)
+            .HasColumnName("versioning")
+            .HasColumnType("boolean")
+            .HasColumnOrder(5)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Bật versioning trên storage");
+        builder.Property(x => x.Encryption)
+            .HasColumnName("encryption")
+            .HasColumnType("varchar(20)")
+            .HasColumnOrder(6)
+            .IsRequired()
+            .HasDefaultValueSql("'SSE'")
+            .ValueGeneratedNever()
+            .HasComment("Mã hóa phía server");
+        builder.Property(x => x.RetentionDays)
+            .HasColumnName("retention_days")
+            .HasColumnType("int")
+            .HasColumnOrder(7)
+            .HasComment("Tự xóa file sau N ngày (lifecycle)");
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(8)
+            .IsRequired()
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedNever()
+            .HasComment("Thời điểm tạo bản ghi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(9)
+            .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(10)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(11)
+            .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+        builder.HasIndex(x => new { x.ProviderId, x.Name }, "uq_buckets").IsUnique();
+
+        builder.HasOne(x => x.Provider)
+            .WithMany()
+            .HasForeignKey(x => x.ProviderId)
+            .HasConstraintName("buckets_provider_id_fkey")
+            .OnDelete(DeleteBehavior.NoAction);
+    }
+}

@@ -1,0 +1,31 @@
+<Project>
+  <!--
+    ERP API STANDARD - cấu hình build dùng chung cho MỌI project trong repo (src/ và tests/).
+    File này GIỐNG HỆT nhau ở tất cả các hệ (auth, api-gateway, ai-gateway, hrm, integration, taskhub, wms...).
+    Bản gốc: erp/docs/api-standard/templates/Directory.Build.props - sửa ở bản gốc rồi chép sang các repo.
+    Trong .csproj KHÔNG khai báo lại TargetFramework / Nullable / ImplicitUsings / LangVersion.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Version NuGet quản lý tập trung tại Directory.Packages.props -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <!-- Phân tích mã + áp dụng .editorconfig ngay khi build -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- CI build với -p:ContinuousIntegrationBuild=true để build tái lập được -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Project trong tests/ không đóng gói NuGet -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('\tests\'))">
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+</Project>
