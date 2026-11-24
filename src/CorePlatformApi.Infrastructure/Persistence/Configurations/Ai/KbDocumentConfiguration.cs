@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.kb_documents</c>.
+/// Cấu hình EF Core cho bảng <c>kb_documents</c>.
 /// </summary>
 public sealed class KbDocumentConfiguration : IEntityTypeConfiguration<KbDocument>
 {
     public void Configure(EntityTypeBuilder<KbDocument> builder)
     {
-        builder.ToTable("kb_documents", "ai", tb =>
+        builder.ToTable("kb_documents", tb =>
         {
             tb.HasComment("Tài liệu nguồn trong kho tri thức");
             tb.HasCheckConstraint("kb_documents_source_type_check", "source_type IN ('FILE','URL','TEXT','ENTITY')");
@@ -30,18 +30,18 @@ public sealed class KbDocumentConfiguration : IEntityTypeConfiguration<KbDocumen
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
-        builder.Property(x => x.KnowledgeBaseId)
-            .HasColumnName("knowledge_base_id")
-            .HasColumnType("uuid")
-            .HasColumnOrder(1)
-            .IsRequired()
-            .HasComment("Kho tri thức");
         builder.Property(x => x.TenantId)
             .HasColumnName("tenant_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(1)
             .IsRequired()
             .HasComment("Tenant (denormalize)");
+        builder.Property(x => x.KnowledgeBaseId)
+            .HasColumnName("knowledge_base_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Kho tri thức");
         builder.Property(x => x.Title)
             .HasColumnName("title")
             .HasColumnType("varchar(500)")

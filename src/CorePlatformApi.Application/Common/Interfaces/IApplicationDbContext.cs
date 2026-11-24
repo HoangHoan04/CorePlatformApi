@@ -1,3 +1,4 @@
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Audit;
 using CorePlatformApi.Domain.Entities.Config;

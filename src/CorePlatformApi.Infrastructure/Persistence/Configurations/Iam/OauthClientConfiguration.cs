@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.oauth_clients</c>.
+/// Cấu hình EF Core cho bảng <c>oauth_clients</c>.
 /// </summary>
 public sealed class OauthClientConfiguration : IEntityTypeConfiguration<OauthClient>
 {
     public void Configure(EntityTypeBuilder<OauthClient> builder)
     {
-        builder.ToTable("oauth_clients", "iam", tb =>
+        builder.ToTable("oauth_clients", tb =>
         {
             tb.HasComment("Ứng dụng client (OAuth2/OIDC): Core Admin, HRM Web, HRM Mobile, WMS Mobile, service nội bộ, ứng dụng đối tác");
             tb.HasCheckConstraint("oauth_clients_client_type_check", "client_type IN ('PUBLIC','CONFIDENTIAL')");

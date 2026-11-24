@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.exchange_rates</c>.
+/// Cấu hình EF Core cho bảng <c>exchange_rates</c>.
 /// </summary>
 public sealed class ExchangeRateConfiguration : IEntityTypeConfiguration<ExchangeRate>
 {
     public void Configure(EntityTypeBuilder<ExchangeRate> builder)
     {
-        builder.ToTable("exchange_rates", "mdm", tb =>
+        builder.ToTable("exchange_rates", tb =>
         {
             tb.HasComment("Tỷ giá quy đổi theo thời điểm");
             tb.HasCheckConstraint("exchange_rates_rate_type_check", "rate_type IN ('BUY_CASH','BUY_TRANSFER','SELL','TRANSFER','CENTRAL','ACCOUNTING')");
@@ -104,6 +104,24 @@ public sealed class ExchangeRateConfiguration : IEntityTypeConfiguration<Exchang
             .HasColumnType("uuid")
             .HasColumnOrder(12)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(13)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(14)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.FromCurrency, x.ToCurrency, x.RateType, x.EffectiveAt }, "uq_exchange_rates")
             .IsUnique()
@@ -119,11 +137,13 @@ public sealed class ExchangeRateConfiguration : IEntityTypeConfiguration<Exchang
         builder.HasOne(x => x.FromCurrencyNavigation)
             .WithMany()
             .HasForeignKey(x => x.FromCurrency)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("exchange_rates_from_currency_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.ToCurrencyNavigation)
             .WithMany()
             .HasForeignKey(x => x.ToCurrency)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("exchange_rates_to_currency_fkey")
             .OnDelete(DeleteBehavior.NoAction);
     }

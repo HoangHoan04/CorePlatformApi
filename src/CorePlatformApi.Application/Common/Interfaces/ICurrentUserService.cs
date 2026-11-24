@@ -13,7 +13,16 @@ public interface ICurrentUserService
     /// org.tenants.id (claim <c>tenant_id</c>).
     /// </summary>
     Guid? TenantId { get; }
+    /// <summary>
+    /// iam.user_sessions.id (claim <c>sid</c>).
+    /// </summary>
+    Guid? SessionId { get; }
+    bool IsPlatformAdmin { get; }
     string? Username { get; }
     string? IpAddress { get; }
     string? UserAgent { get; }
+    /// <summary>
+    /// Ngôn ngữ giao diện của request (header Accept-Language, VD vi-VN) — dùng để dịch thông báo / Excel.
+    /// </summary>
+    string? Language { get; }
 }

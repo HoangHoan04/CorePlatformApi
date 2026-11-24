@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using System.Net;
 
@@ -7,20 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Audit;
 /// <summary>
 /// Lịch sử thay đổi dữ liệu nhạy cảm (old/new value) phục vụ đối soát kế toán, kho, nhân sự. Các phân hệ gửi qua event hoặc ghi trực tiếp
 /// </summary>
-/// <remarks>Bảng <c>audit.data_change_logs</c>; partition RANGE theo <c>changed_at</c> (tạo bằng SQL thô, không qua EF migration).</remarks>
-public class DataChangeLog : IMayHaveTenant
+/// <remarks>Bảng <c>data_change_logs</c> (phân hệ audit).</remarks>
+public class DataChangeLog : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Công ty (lọc theo data scope)
     /// </summary>

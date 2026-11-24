@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Iam;
 
 /// <summary>
 /// Mã khôi phục 2FA dùng một lần
 /// </summary>
-/// <remarks>Bảng <c>iam.user_recovery_codes</c>.</remarks>
-public class UserRecoveryCode
+/// <remarks>Bảng <c>user_recovery_codes</c> (phân hệ iam).</remarks>
+public class UserRecoveryCode : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>
@@ -28,12 +24,6 @@ public class UserRecoveryCode
     /// Thời điểm đã dùng (NULL = chưa dùng)
     /// </summary>
     public DateTimeOffset? UsedAt { get; set; }
-
-    /// <summary>
-    /// Thời điểm tạo
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

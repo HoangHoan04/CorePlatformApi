@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Notify;
@@ -6,25 +6,14 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Hàng đợi/nhật ký gửi theo từng kênh (outbox): email, push, SMS... có retry
 /// </summary>
-/// <remarks>Bảng <c>notify.deliveries</c>.</remarks>
-public class NotificationDelivery : IMayHaveTenant
+/// <remarks>Bảng <c>deliveries</c> (phân hệ notify).</remarks>
+public class NotificationDelivery : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Thông báo gốc
     /// </summary>
     /// <remarks>FK → <c>notify.notifications(id)</c></remarks>
     public Guid NotificationId { get; set; }
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Người nhận (NULL nếu gửi tới email ngoài hệ thống)
@@ -101,12 +90,6 @@ public class NotificationDelivery : IMayHaveTenant
     /// Gửi thành công lúc
     /// </summary>
     public DateTimeOffset? SentAt { get; set; }
-
-    /// <summary>
-    /// Thời điểm tạo
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

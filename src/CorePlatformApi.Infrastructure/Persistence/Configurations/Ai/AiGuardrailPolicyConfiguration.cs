@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.guardrail_policies</c>.
+/// Cấu hình EF Core cho bảng <c>guardrail_policies</c>.
 /// </summary>
 public sealed class AiGuardrailPolicyConfiguration : IEntityTypeConfiguration<AiGuardrailPolicy>
 {
     public void Configure(EntityTypeBuilder<AiGuardrailPolicy> builder)
     {
-        builder.ToTable("guardrail_policies", "ai", tb =>
+        builder.ToTable("guardrail_policies", tb =>
         {
             tb.HasComment("Chính sách guardrail: che PII, chặn chủ đề, phát hiện prompt injection, kiểm tra output");
             tb.HasCheckConstraint("guardrail_policies_guard_type_check", "guard_type IN ('PII_MASK','BLOCKED_KEYWORDS','BLOCKED_TOPICS','PROMPT_INJECTION','OUTPUT_SCHEMA','MAX_INPUT_LENGTH','TOXICITY','CUSTOM')");
@@ -117,6 +117,24 @@ public sealed class AiGuardrailPolicyConfiguration : IEntityTypeConfiguration<Ai
             .HasColumnType("uuid")
             .HasColumnOrder(13)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(14)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(15)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(16)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.Code }, "uq_ai_guardrails")
             .IsUnique()

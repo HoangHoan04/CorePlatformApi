@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,25 +7,14 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Hộp thư thông báo in-app của từng user (thanh chuông). Đã render sẵn nội dung theo ngôn ngữ user
 /// </summary>
-/// <remarks>Bảng <c>notify.user_notifications</c>.</remarks>
-public class UserNotification : IMayHaveTenant
+/// <remarks>Bảng <c>user_notifications</c> (phân hệ notify).</remarks>
+public class UserNotification : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Thông báo gốc
     /// </summary>
     /// <remarks>FK → <c>notify.notifications(id)</c></remarks>
     public Guid NotificationId { get; set; }
-
-    /// <summary>
-    /// Tenant (denormalize)
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Người nhận
@@ -86,12 +75,6 @@ public class UserNotification : IMayHaveTenant
     /// </summary>
     /// <remarks>Mặc định DB: <c>false</c></remarks>
     public bool IsArchived { get; set; } = false;
-
-    /// <summary>
-    /// Thời điểm nhận
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

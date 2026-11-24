@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Iam;
 
 /// <summary>
 /// Lịch sử mật khẩu để chặn dùng lại N mật khẩu gần nhất
 /// </summary>
-/// <remarks>Bảng <c>iam.password_histories</c>.</remarks>
-public class PasswordHistory
+/// <remarks>Bảng <c>password_histories</c> (phân hệ iam).</remarks>
+public class PasswordHistory : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>
@@ -23,12 +19,6 @@ public class PasswordHistory
     /// Hash mật khẩu cũ
     /// </summary>
     public string PasswordHash { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Thời điểm đặt mật khẩu này
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

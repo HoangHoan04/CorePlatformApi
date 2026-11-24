@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Quyền cụ thể = tài nguyên × hành động. Mã quyền dạng MODULE:RESOURCE:ACTION (HRM:EMPLOYEE:CREATE)
 /// </summary>
-/// <remarks>Bảng <c>iam.permissions</c>.</remarks>
-public class Permission : AuditableEntity
+/// <remarks>Bảng <c>permissions</c> (phân hệ iam).</remarks>
+public class Permission : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phân hệ (denormalize để lọc nhanh)
     /// </summary>

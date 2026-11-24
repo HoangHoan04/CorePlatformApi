@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Notify;
@@ -11,21 +11,10 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Tài khoản người dùng dùng chung SSO cho mọi phân hệ (Web &amp; Mobile)
 /// </summary>
-/// <remarks>Bảng <c>iam.users</c>.</remarks>
-public class User : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>users</c> (phân hệ iam); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class User : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính (sub trong JWT)
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = Platform Admin quản trị toàn nền tảng)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Tên đăng nhập (duy nhất trong tenant)
     /// </summary>

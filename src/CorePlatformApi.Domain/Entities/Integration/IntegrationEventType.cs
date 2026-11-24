@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,8 +7,8 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Danh mục event nghiệp vụ trao đổi giữa các phân hệ (crm.order.confirmed, hrm.payroll.closed...) kèm schema payload
 /// </summary>
-/// <remarks>Bảng <c>integration.event_types</c>.</remarks>
-public class IntegrationEventType : AuditableEntity
+/// <remarks>Bảng <c>integration_event_types</c> (phân hệ integration).</remarks>
+public class IntegrationEventType : BaseEntity
 {
     /// <summary>
     /// Mã event (domain.entity.action)

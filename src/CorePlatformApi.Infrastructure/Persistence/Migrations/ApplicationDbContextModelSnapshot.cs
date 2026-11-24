@@ -45,12 +45,37 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("now()")
                         .HasComment("Tạo lúc");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(9)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean")
                         .HasColumnName("is_archived")
                         .HasColumnOrder(6)
                         .HasDefaultValueSql("false")
                         .HasComment("Lưu trữ");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid?>("KnowledgeBaseId")
                         .HasColumnType("uuid")
@@ -82,11 +107,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(5)
                         .HasComment("Tiêu đề (tự sinh từ câu đầu)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(10)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
                         .HasColumnOrder(2)
                         .HasComment("Người hỏi");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("conversations_pkey");
@@ -94,7 +137,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId", "LastMessageAt" }, "ix_ai_conversations_user")
                         .IsDescending(false, true);
 
-                    b.ToTable("conversations", "ai", t =>
+                    b.ToTable("conversations", null, t =>
                         {
                             t.HasComment("Hội thoại chatbot nội bộ");
                         });
@@ -127,6 +170,25 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_by")
                         .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("KeyHash")
                         .IsRequired()
@@ -167,12 +229,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(7)
                         .HasComment("Rate limit RPM");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
@@ -205,6 +261,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("gateway_clients_pkey");
 
@@ -214,7 +276,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "KeyPrefix" }, "gateway_clients_key_prefix_key")
                         .IsUnique();
 
-                    b.ToTable("gateway_clients", "ai", t =>
+                    b.ToTable("gateway_clients", null, t =>
                         {
                             t.HasComment("Client nội bộ gọi AI Gateway (mỗi phân hệ/ứng dụng một client key) để định danh, rate limit, tính quota");
 
@@ -275,6 +337,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(11)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("GuardType")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
@@ -289,6 +363,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("true")
                         .HasComment("Đang bật");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<bool>("IsGlobal")
                         .HasColumnType("boolean")
                         .HasColumnName("is_global")
@@ -302,12 +383,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("name")
                         .HasColumnOrder(3)
                         .HasComment("Tên");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -327,6 +402,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("guardrail_policies_pkey");
 
@@ -335,7 +416,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Code" }, "uq_ai_guardrails"), false);
 
-                    b.ToTable("guardrail_policies", "ai", t =>
+                    b.ToTable("guardrail_policies", null, t =>
                         {
                             t.HasComment("Chính sách guardrail: che PII, chặn chủ đề, phát hiện prompt injection, kiểm tra output");
 
@@ -359,72 +440,121 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("Citations")
                         .HasColumnType("jsonb")
                         .HasColumnName("citations")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Nguồn trích dẫn [{\"chunk_id\":\"...\",\"document_id\":\"...\",\"score\":0.82}]");
 
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("content")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Nội dung");
 
                     b.Property<Guid>("ConversationId")
                         .HasColumnType("uuid")
                         .HasColumnName("conversation_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Hội thoại");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<short?>("Feedback")
                         .HasColumnType("smallint")
                         .HasColumnName("feedback")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Đánh giá: 1 hữu ích, -1 không hữu ích");
 
                     b.Property<string>("FeedbackNote")
                         .HasColumnType("text")
                         .HasColumnName("feedback_note")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Góp ý");
 
                     b.Property<int?>("InputTokens")
                         .HasColumnType("int")
                         .HasColumnName("input_tokens")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Token vào");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<int?>("OutputTokens")
                         .HasColumnType("int")
                         .HasColumnName("output_tokens")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Token ra");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("role")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Vai trò");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid?>("UsageLogId")
                         .HasColumnType("uuid")
                         .HasColumnName("usage_log_id")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Liên kết ai.usage_logs");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("messages_pkey");
 
                     b.HasIndex(new[] { "ConversationId", "CreatedAt" }, "ix_ai_messages_conversation");
 
-                    b.ToTable("messages", "ai", t =>
+                    b.ToTable("messages", null, t =>
                         {
                             t.HasComment("Tin nhắn trong hội thoại, kèm trích dẫn chunk nguồn và đánh giá của người dùng");
 
@@ -446,118 +576,143 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<decimal?>("CachedInputPricePer1m")
                         .HasColumnType("numeric(12,6)")
                         .HasColumnName("cached_input_price_per_1m")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Giá input cache / 1 triệu token");
 
                     b.PrimitiveCollection<List<string>>("Capabilities")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("capabilities")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'{CHAT}'")
                         .HasComment("Năng lực: CHAT, VISION, TOOLS, JSON_MODE, EMBEDDING, RERANK, AUDIO, IMAGE_GEN");
 
                     b.Property<int?>("ContextWindow")
                         .HasColumnType("int")
                         .HasColumnName("context_window")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Số token ngữ cảnh tối đa");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(20)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(21)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateOnly?>("DeprecatedAt")
                         .HasColumnType("date")
                         .HasColumnName("deprecated_at")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Ngày provider ngừng hỗ trợ");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("display_name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Tên hiển thị");
 
                     b.Property<int?>("EmbeddingDimension")
                         .HasColumnType("int")
                         .HasColumnName("embedding_dimension")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Số chiều vector (model embedding)");
 
                     b.Property<decimal?>("InputPricePer1m")
                         .HasColumnType("numeric(12,6)")
                         .HasColumnName("input_price_per_1m")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Giá input / 1 triệu token (USD)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(19)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<int?>("MaxOutputTokens")
                         .HasColumnType("int")
                         .HasColumnName("max_output_tokens")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Số token đầu ra tối đa");
 
                     b.Property<string>("ModelCode")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("model_code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Mã model gửi lên API");
 
                     b.Property<decimal?>("OutputPricePer1m")
                         .HasColumnType("numeric(12,6)")
                         .HasColumnName("output_price_per_1m")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Giá output / 1 triệu token (USD)");
 
                     b.Property<string>("PriceCurrency")
                         .IsRequired()
                         .HasColumnType("char(3)")
                         .HasColumnName("price_currency")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("'USD'")
                         .HasComment("Tiền tệ bảng giá");
 
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("uuid")
                         .HasColumnName("provider_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Nhà cung cấp");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("models_pkey");
@@ -565,7 +720,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ProviderId", "ModelCode" }, "uq_ai_models")
                         .IsUnique();
 
-                    b.ToTable("models", "ai", t =>
+                    b.ToTable("models", null, t =>
                         {
                             t.HasComment("Model AI và bảng giá để ước tính chi phí");
                         });
@@ -600,17 +755,30 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(5)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(9)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
                         .HasColumnOrder(3)
                         .HasComment("Mô tả mục đích");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -630,6 +798,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(7)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("model_aliases_pkey");
 
@@ -638,7 +812,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Code" }, "uq_ai_model_aliases"), false);
 
-                    b.ToTable("model_aliases", "ai", t =>
+                    b.ToTable("model_aliases", null, t =>
                         {
                             t.HasComment("Alias model logic (default-chat, cheap-summary, embedding-default) để đổi model không cần sửa code; hỗ trợ fallback");
                         });
@@ -656,63 +830,88 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AliasId")
                         .HasColumnType("uuid")
                         .HasColumnName("alias_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Alias");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<Guid?>("CredentialId")
                         .HasColumnType("uuid")
                         .HasColumnName("credential_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Ép dùng key này (NULL = tự chọn)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid>("ModelId")
                         .HasColumnType("uuid")
                         .HasColumnName("model_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Model");
 
                     b.Property<short>("Priority")
                         .HasColumnType("smallint")
                         .HasColumnName("priority")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("1")
                         .HasComment("1 = chính, 2,3 = fallback khi lỗi/429");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<short>("Weight")
                         .HasColumnType("smallint")
                         .HasColumnName("weight")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("100")
                         .HasComment("Trọng số chia tải khi cùng priority");
 
@@ -722,7 +921,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "AliasId", "ModelId" }, "uq_ai_alias_targets")
                         .IsUnique();
 
-                    b.ToTable("model_alias_targets", "ai", t =>
+                    b.ToTable("model_alias_targets", null, t =>
                         {
                             t.HasComment("Danh sách model đích của alias theo thứ tự ưu tiên (model chính → fallback)");
                         });
@@ -730,22 +929,88 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Ai.AiPromptGuardrail", b =>
                 {
-                    b.Property<Guid>("PromptVersionId")
+                    b.Property<Guid>("Id")
                         .HasColumnType("uuid")
-                        .HasColumnName("prompt_version_id")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("Phiên bản prompt");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(4)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(5)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(9)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid>("GuardrailId")
                         .HasColumnType("uuid")
                         .HasColumnName("guardrail_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Guardrail");
 
-                    b.HasKey("PromptVersionId", "GuardrailId")
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<Guid>("PromptVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("prompt_version_id")
+                        .HasColumnOrder(2)
+                        .HasComment("Phiên bản prompt");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(6)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(7)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("prompt_guardrails_pkey");
 
-                    b.ToTable("prompt_guardrails", "ai", t =>
+                    b.HasIndex(new[] { "PromptVersionId", "GuardrailId" }, "prompt_guardrails_prompt_version_id_guardrail_id_key")
+                        .IsUnique();
+
+                    b.ToTable("prompt_guardrails", null, t =>
                         {
                             t.HasComment("Gắn guardrail vào phiên bản prompt");
                         });
@@ -831,12 +1096,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("Tên");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
@@ -855,6 +1114,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(11)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("prompt_templates_pkey");
 
@@ -864,7 +1129,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Code" }, "uq_ai_prompt_templates"), false);
 
-                    b.ToTable("prompt_templates", "ai", t =>
+                    b.ToTable("prompt_templates", null, t =>
                         {
                             t.HasComment("Prompt template dùng chung theo phân hệ (tóm tắt CV - HRM, phân tích KH - CRM, gợi ý đặt hàng - WMS)");
                         });
@@ -882,134 +1147,159 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("ChangeNote")
                         .HasColumnType("text")
                         .HasColumnName("change_note")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Ghi chú thay đổi");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(23)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(24)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(22)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("JsonSchema")
                         .HasColumnType("jsonb")
                         .HasColumnName("json_schema")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("JSON Schema đầu ra (JSON_SCHEMA)");
 
                     b.Property<int?>("MaxOutputTokens")
                         .HasColumnType("int")
                         .HasColumnName("max_output_tokens")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Giới hạn token đầu ra");
 
                     b.Property<Guid?>("ModelAliasId")
                         .HasColumnType("uuid")
                         .HasColumnName("model_alias_id")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Alias model dùng");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("published_at")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasComment("Phát hành lúc");
 
                     b.Property<string>("ResponseFormat")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("response_format")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("'TEXT'")
                         .HasComment("Định dạng trả về");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("status")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("'DRAFT'")
                         .HasComment("Trạng thái");
 
                     b.Property<string>("SystemPrompt")
                         .HasColumnType("text")
                         .HasColumnName("system_prompt")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("System prompt");
 
                     b.Property<decimal?>("Temperature")
                         .HasColumnType("numeric(3,2)")
                         .HasColumnName("temperature")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Nhiệt độ");
 
                     b.Property<Guid>("TemplateId")
                         .HasColumnType("uuid")
                         .HasColumnName("template_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Prompt");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("Tools")
                         .HasColumnType("jsonb")
                         .HasColumnName("tools")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Khai báo function/tool calling");
 
                     b.Property<decimal?>("TopP")
                         .HasColumnType("numeric(3,2)")
                         .HasColumnName("top_p")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Top-p");
 
                     b.Property<short>("TrafficPercent")
                         .HasColumnType("smallint")
                         .HasColumnName("traffic_percent")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasDefaultValueSql("100")
                         .HasComment("% lưu lượng (A/B test giữa các phiên bản PUBLISHED)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<string>("UserPrompt")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("user_prompt")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("User prompt có biến {{variable}}");
 
                     b.Property<string>("Variables")
                         .HasColumnType("jsonb")
                         .HasColumnName("variables")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Khai báo biến đầu vào, VD: [{\"name\":\"cv_text\",\"required\":true}]");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("VersionNo")
                         .HasColumnType("int")
                         .HasColumnName("version_no")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Số phiên bản");
 
                     b.HasKey("Id")
@@ -1018,7 +1308,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "TemplateId", "VersionNo" }, "uq_ai_prompt_versions")
                         .IsUnique();
 
-                    b.ToTable("prompt_versions", "ai", t =>
+                    b.ToTable("prompt_versions", null, t =>
                         {
                             t.HasComment("Phiên bản prompt (quản lý thay đổi, rollback, A/B test)");
 
@@ -1043,46 +1333,65 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("api_style")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Chuẩn API để chọn adapter");
 
                     b.Property<string>("BaseUrl")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("base_url")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Base URL mặc định");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã (OPENAI, GEMINI, ANTHROPIC, AZURE_OPENAI, OLLAMA, VLLM)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsSelfHosted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_self_hosted")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("false")
                         .HasComment("Model nội bộ (dữ liệu không rời hạ tầng)");
 
@@ -1090,38 +1399,44 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Id")
-                        .HasName("providers_pkey");
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
-                    b.HasIndex(new[] { "Code" }, "providers_code_key")
+                    b.HasKey("Id")
+                        .HasName("ai_providers_pkey");
+
+                    b.HasIndex(new[] { "Code" }, "ai_providers_code_key")
                         .IsUnique();
 
-                    b.ToTable("providers", "ai", t =>
+                    b.ToTable("ai_providers", null, t =>
                         {
                             t.HasComment("Nhà cung cấp AI (OpenAI, Gemini, Anthropic, Azure OpenAI, model nội bộ qua Ollama/vLLM)");
 
-                            t.HasCheckConstraint("providers_api_style_check", "api_style IN ('OPENAI','ANTHROPIC','GEMINI','CUSTOM')");
+                            t.HasCheckConstraint("ai_providers_api_style_check", "api_style IN ('OPENAI','ANTHROPIC','GEMINI','CUSTOM')");
                         });
                 });
 
@@ -1159,6 +1474,25 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_by")
                         .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("LastError")
                         .HasColumnType("text")
@@ -1204,12 +1538,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(2)
                         .HasComment("Nhà cung cấp");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
@@ -1236,10 +1564,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(15)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("provider_credentials_pkey");
 
-                    b.ToTable("provider_credentials", "ai", t =>
+                    b.ToTable("provider_credentials", null, t =>
                         {
                             t.HasComment("API key của nhà cung cấp AI — lưu tập trung, các service con không giữ key. Tenant có thể dùng key riêng (BYOK)");
 
@@ -1284,6 +1618,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid?>("DowngradeAliasId")
                         .HasColumnType("uuid")
                         .HasColumnName("downgrade_alias_id")
@@ -1296,6 +1642,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang áp dụng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<decimal?>("MaxCostUsd")
                         .HasColumnType("numeric(12,4)")
@@ -1328,12 +1681,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("Chu kỳ");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
@@ -1358,6 +1705,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("User (NULL = không giới hạn theo user)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("quotas_pkey");
 
@@ -1366,7 +1719,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "ModuleId", "UserId", "Period" }, "uq_ai_quotas"), false);
 
-                    b.ToTable("quotas", "ai", t =>
+                    b.ToTable("quotas", null, t =>
                         {
                             t.HasComment("Hạn mức sử dụng AI theo tenant / phân hệ / user theo ngày hoặc tháng");
 
@@ -1380,11 +1733,93 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Ai.AiUsageDaily", b =>
                 {
-                    b.Property<DateOnly>("UsageDate")
-                        .HasColumnType("date")
-                        .HasColumnName("usage_date")
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("Ngày");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
+                    b.Property<decimal>("CostUsd")
+                        .HasColumnType("numeric(14,6)")
+                        .HasColumnName("cost_usd")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("0")
+                        .HasComment("Tổng chi phí");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("int")
+                        .HasColumnName("error_count")
+                        .HasColumnOrder(6)
+                        .HasDefaultValueSql("0")
+                        .HasComment("Số request lỗi");
+
+                    b.Property<long>("InputTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("input_tokens")
+                        .HasColumnOrder(7)
+                        .HasDefaultValueSql("0")
+                        .HasComment("Tổng token vào");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<Guid>("ModelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("model_id")
+                        .HasColumnOrder(4)
+                        .HasComment("Model");
+
+                    b.Property<string>("ModuleCode")
+                        .IsRequired()
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("module_code")
+                        .HasColumnOrder(3)
+                        .HasDefaultValueSql("'-'")
+                        .HasComment("Phân hệ ('-' nếu không xác định)");
+
+                    b.Property<long>("OutputTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("output_tokens")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("0")
+                        .HasComment("Tổng token ra");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("int")
+                        .HasColumnName("request_count")
+                        .HasColumnOrder(5)
+                        .HasDefaultValueSql("0")
+                        .HasComment("Số request");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -1392,65 +1827,38 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(1)
                         .HasComment("Tenant");
 
-                    b.Property<string>("ModuleCode")
-                        .HasColumnType("varchar(30)")
-                        .HasColumnName("module_code")
-                        .HasColumnOrder(2)
-                        .HasDefaultValueSql("'-'")
-                        .HasComment("Phân hệ ('-' nếu không xác định)");
-
-                    b.Property<Guid>("ModelId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("model_id")
-                        .HasColumnOrder(3)
-                        .HasComment("Model");
-
-                    b.Property<decimal>("CostUsd")
-                        .HasColumnType("numeric(14,6)")
-                        .HasColumnName("cost_usd")
-                        .HasColumnOrder(8)
-                        .HasDefaultValueSql("0")
-                        .HasComment("Tổng chi phí");
-
-                    b.Property<int>("ErrorCount")
-                        .HasColumnType("int")
-                        .HasColumnName("error_count")
-                        .HasColumnOrder(5)
-                        .HasDefaultValueSql("0")
-                        .HasComment("Số request lỗi");
-
-                    b.Property<long>("InputTokens")
-                        .HasColumnType("bigint")
-                        .HasColumnName("input_tokens")
-                        .HasColumnOrder(6)
-                        .HasDefaultValueSql("0")
-                        .HasComment("Tổng token vào");
-
-                    b.Property<long>("OutputTokens")
-                        .HasColumnType("bigint")
-                        .HasColumnName("output_tokens")
-                        .HasColumnOrder(7)
-                        .HasDefaultValueSql("0")
-                        .HasComment("Tổng token ra");
-
-                    b.Property<int>("RequestCount")
-                        .HasColumnType("int")
-                        .HasColumnName("request_count")
-                        .HasColumnOrder(4)
-                        .HasDefaultValueSql("0")
-                        .HasComment("Số request");
-
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("now()")
                         .HasComment("Cập nhật lúc");
 
-                    b.HasKey("UsageDate", "TenantId", "ModuleCode", "ModelId")
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<DateOnly>("UsageDate")
+                        .HasColumnType("date")
+                        .HasColumnName("usage_date")
+                        .HasColumnOrder(2)
+                        .HasComment("Ngày");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("usage_daily_pkey");
 
-                    b.ToTable("usage_daily", "ai", t =>
+                    b.HasIndex(new[] { "UsageDate", "TenantId", "ModuleCode", "ModelId" }, "usage_daily_usage_date_tenant_id_module_code_model_id_key")
+                        .IsUnique();
+
+                    b.ToTable("usage_daily", null, t =>
                         {
                             t.HasComment("Tổng hợp usage theo ngày (job cộng dồn từ usage_logs) — dùng kiểm tra quota nhanh và báo cáo chi phí");
                         });
@@ -1465,13 +1873,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at")
-                        .HasColumnOrder(24)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm gọi");
-
                     b.Property<string>("AliasCode")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("alias_code")
@@ -1485,11 +1886,36 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("0")
                         .HasComment("Token đọc từ cache");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(24)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm gọi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(25)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
                     b.Property<Guid?>("CredentialId")
                         .HasColumnType("uuid")
                         .HasColumnName("credential_id")
                         .HasColumnOrder(9)
                         .HasComment("Key provider đã dùng");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(29)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(30)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("ErrorCode")
                         .HasColumnType("varchar(100)")
@@ -1529,6 +1955,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(19)
                         .HasDefaultValueSql("false")
                         .HasComment("Trả về từ semantic cache");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(28)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsFallback")
                         .HasColumnType("boolean")
@@ -1615,19 +2048,44 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(23)
                         .HasComment("Trace id");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(26)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(27)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
                         .HasColumnOrder(4)
                         .HasComment("User cuối");
 
-                    b.HasKey("Id", "CreatedAt")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("usage_logs_pkey");
 
-                    b.ToTable("usage_logs", "ai", t =>
-                        {
-                            t.ExcludeFromMigrations();
+                    b.HasIndex(new[] { "ModuleCode", "CreatedAt" }, "ix_ai_usage_module")
+                        .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "TenantId", "CreatedAt" }, "ix_ai_usage_tenant")
+                        .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "Id", "CreatedAt" }, "usage_logs_id_created_at_key")
+                        .IsUnique();
+
+                    b.ToTable("usage_logs", null, t =>
+                        {
                             t.HasComment("Log từng lần gọi AI: token, chi phí, độ trễ (không lưu nội dung prompt theo mặc định vì dữ liệu nhạy cảm)");
 
                             t.HasCheckConstraint("usage_logs_request_type_check", "request_type IN ('CHAT','EMBEDDING','RERANK','IMAGE','AUDIO','MODERATION')");
@@ -1673,10 +2131,28 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("now()")
                         .HasComment("Tạo lúc");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid>("DocumentId")
                         .HasColumnType("uuid")
                         .HasColumnName("document_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Tài liệu");
 
                     b.Property<Vector>("Embedding")
@@ -1691,10 +2167,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasComment("Đường dẫn tiêu đề (Chương 2 > Điều 5) để trích dẫn");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<Guid>("KnowledgeBaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("knowledge_base_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Kho (denormalize để lọc nhanh)");
 
                     b.Property<string>("Metadata")
@@ -1714,7 +2197,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
 
                     b.Property<int?>("TokenCount")
@@ -1722,6 +2205,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("token_count")
                         .HasColumnOrder(8)
                         .HasComment("Số token");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("kb_chunks_pkey");
@@ -1735,7 +2236,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "DocumentId", "ChunkIndex" }, "uq_ai_kb_chunks")
                         .IsUnique();
 
-                    b.ToTable("kb_chunks", "ai", t =>
+                    b.ToTable("kb_chunks", null, t =>
                         {
                             t.HasComment("Chunk văn bản + vector embedding (pgvector) + full-text để hybrid search");
                         });
@@ -1834,7 +2335,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("KnowledgeBaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("knowledge_base_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Kho tri thức");
 
                     b.Property<string>("Language")
@@ -1843,12 +2344,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(9)
                         .HasDefaultValueSql("'vi'")
                         .HasComment("Ngôn ngữ");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("SourceType")
                         .IsRequired()
@@ -1880,7 +2375,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant (denormalize)");
 
                     b.Property<string>("Title")
@@ -1908,13 +2403,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(21)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("kb_documents_pkey");
 
                     b.HasIndex(new[] { "KnowledgeBaseId" }, "ix_ai_kb_documents_kb")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("kb_documents", "ai", t =>
+                    b.ToTable("kb_documents", null, t =>
                         {
                             t.HasComment("Tài liệu nguồn trong kho tri thức");
 
@@ -2038,12 +2539,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("5")
                         .HasComment("Số chunk lấy mỗi truy vấn");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
@@ -2070,6 +2565,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(18)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<string>("Visibility")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
@@ -2081,7 +2582,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("knowledge_bases_pkey");
 
-                    b.ToTable("knowledge_bases", "ai", t =>
+                    b.ToTable("knowledge_bases", null, t =>
                         {
                             t.HasComment("Kho tri thức RAG (nội quy, chính sách bán hàng, quy trình kho) cho chatbot nội bộ");
 
@@ -2103,59 +2604,84 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<bool>("CanManage")
                         .HasColumnType("boolean")
                         .HasColumnName("can_manage")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("false")
                         .HasComment("Được quản lý tài liệu");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid>("KnowledgeBaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("knowledge_base_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Kho tri thức");
 
                     b.Property<Guid>("PrincipalId")
                         .HasColumnType("uuid")
                         .HasColumnName("principal_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Id đối tượng");
 
                     b.Property<string>("PrincipalType")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("principal_type")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Loại đối tượng");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("knowledge_base_access_pkey");
@@ -2163,7 +2689,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "KnowledgeBaseId", "PrincipalType", "PrincipalId" }, "uq_ai_kb_access")
                         .IsUnique();
 
-                    b.ToTable("knowledge_base_access", "ai", t =>
+                    b.ToTable("knowledge_base_access", null, t =>
                         {
                             t.HasComment("Phân quyền truy cập kho tri thức theo vai trò/phòng ban/chi nhánh/user");
 
@@ -2180,13 +2706,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("occurred_at")
-                        .HasColumnOrder(20)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm");
-
                     b.Property<string>("ApiKeyPrefix")
                         .HasColumnType("varchar(16)")
                         .HasColumnName("api_key_prefix")
@@ -2198,6 +2717,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("client_id")
                         .HasColumnOrder(4)
                         .HasComment("OAuth client");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(21)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(26)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(27)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<int>("DurationMs")
                         .HasColumnType("int")
@@ -2224,6 +2768,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(17)
                         .HasComment("IP client");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(25)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<bool>("IsRateLimited")
                         .HasColumnType("boolean")
                         .HasColumnName("is_rate_limited")
@@ -2236,6 +2787,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("module_code")
                         .HasColumnOrder(7)
                         .HasComment("Phân hệ");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("occurred_at")
+                        .HasColumnOrder(20)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm");
 
                     b.Property<string>("Path")
                         .IsRequired()
@@ -2277,15 +2835,27 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
 
                     b.Property<string>("TraceId")
                         .IsRequired()
                         .HasColumnType("varchar(64)")
                         .HasColumnName("trace_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Trace id (trả về client qua header X-Trace-Id)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(23)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(24)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<int?>("UpstreamMs")
                         .HasColumnType("int")
@@ -2305,13 +2875,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("User");
 
-                    b.HasKey("Id", "OccurredAt")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("api_request_logs_pkey");
 
-                    b.ToTable("api_request_logs", "audit", t =>
-                        {
-                            t.ExcludeFromMigrations();
+                    b.HasIndex(new[] { "Id", "OccurredAt" }, "api_request_logs_id_occurred_at_key")
+                        .IsUnique();
 
+                    b.HasIndex(new[] { "OccurredAt" }, "ix_api_logs_errors")
+                        .IsDescending()
+                        .HasFilter("status_code >= 500");
+
+                    b.HasIndex(new[] { "TenantId", "OccurredAt" }, "ix_api_logs_tenant")
+                        .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "TraceId" }, "ix_api_logs_trace");
+
+                    b.ToTable("api_request_logs", null, t =>
+                        {
                             t.HasComment("Log request đi qua API Gateway (thường đẩy song song sang Loki/ELK; bảng này giữ ngắn hạn để tra cứu nhanh theo traceId)");
                         });
                 });
@@ -2328,89 +2914,114 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("entity_type")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Loại đối tượng (EMPLOYEE, SALARY, STOCK_ADJUSTMENT)");
 
                     b.PrimitiveCollection<List<string>>("ExcludeFields")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("exclude_fields")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("'{updated_at,updated_by}'")
                         .HasComment("Bỏ qua trường này");
 
                     b.PrimitiveCollection<List<string>>("IncludeFields")
                         .HasColumnType("text[]")
                         .HasColumnName("include_fields")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Chỉ ghi các trường này (NULL = tất cả)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("is_enabled")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("true")
                         .HasComment("Bật lưu vết");
 
                     b.PrimitiveCollection<List<string>>("MaskedFields")
                         .HasColumnType("text[]")
                         .HasColumnName("masked_fields")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Trường được ghi nhưng che giá trị (***), VD: base_salary, id_number");
 
                     b.Property<string>("ModuleCode")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("module_code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phân hệ");
 
                     b.Property<int>("RetentionDays")
                         .HasColumnType("int")
                         .HasColumnName("retention_days")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("3650")
                         .HasComment("Thời gian lưu (ngày) — chứng từ kế toán tối thiểu 10 năm");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.PrimitiveCollection<List<string>>("TrackActions")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("track_actions")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'{INSERT,UPDATE,DELETE}'")
                         .HasComment("Hành động cần ghi");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("audit_policies_pkey");
@@ -2418,7 +3029,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ModuleCode", "EntityType" }, "uq_audit_policies")
                         .IsUnique();
 
-                    b.ToTable("audit_policies", "audit", t =>
+                    b.ToTable("audit_policies", null, t =>
                         {
                             t.HasComment("Cấu hình đối tượng cần lưu vết thay đổi và trường cần che (lương, CCCD...)");
                         });
@@ -2433,19 +3044,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
-                    b.Property<DateTimeOffset>("ChangedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("changed_at")
-                        .HasColumnOrder(18)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm");
-
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("action")
                         .HasColumnOrder(7)
                         .HasComment("Hành động");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("changed_at")
+                        .HasColumnOrder(18)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm");
 
                     b.Property<Guid?>("ChangedBy")
                         .HasColumnType("uuid")
@@ -2470,6 +3081,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("company_id")
                         .HasColumnOrder(2)
                         .HasComment("Công ty (lọc theo data scope)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(19)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(24)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(25)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("EntityDisplay")
                         .HasColumnType("varchar(255)")
@@ -2496,6 +3132,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("ip_address")
                         .HasColumnOrder(16)
                         .HasComment("IP");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(23)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("ModuleCode")
                         .IsRequired()
@@ -2548,13 +3191,41 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(17)
                         .HasComment("Trace id liên kết request");
 
-                    b.HasKey("Id", "ChangedAt")
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("data_change_logs_pkey");
 
-                    b.ToTable("data_change_logs", "audit", t =>
-                        {
-                            t.ExcludeFromMigrations();
+                    b.HasIndex(new[] { "Id", "ChangedAt" }, "data_change_logs_id_changed_at_key")
+                        .IsUnique();
 
+                    b.HasIndex(new[] { "EntityType", "EntityId", "ChangedAt" }, "ix_data_change_entity")
+                        .IsDescending(false, false, true);
+
+                    b.HasIndex(new[] { "TenantId", "ModuleCode", "ChangedAt" }, "ix_data_change_tenant")
+                        .IsDescending(false, false, true);
+
+                    b.HasIndex(new[] { "ChangedBy", "ChangedAt" }, "ix_data_change_user")
+                        .IsDescending(false, true);
+
+                    b.ToTable("data_change_logs", null, t =>
+                        {
                             t.HasComment("Lịch sử thay đổi dữ liệu nhạy cảm (old/new value) phục vụ đối soát kế toán, kho, nhân sự. Các phân hệ gửi qua event hoặc ghi trực tiếp");
 
                             t.HasCheckConstraint("data_change_logs_action_check", "action IN ('INSERT','UPDATE','DELETE','RESTORE','APPROVE','EXPORT')");
@@ -2572,13 +3243,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("occurred_at")
-                        .HasColumnOrder(15)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm");
-
                     b.Property<string>("AuthMethod")
                         .HasColumnType("varchar(30)")
                         .HasColumnName("auth_method")
@@ -2590,6 +3254,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("client_id")
                         .HasColumnOrder(7)
                         .HasComment("Ứng dụng");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid?>("DeviceId")
                         .HasColumnType("uuid")
@@ -2628,12 +3317,26 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(10)
                         .HasComment("IP");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(20)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<bool>("IsSuspicious")
                         .HasColumnType("boolean")
                         .HasColumnName("is_suspicious")
                         .HasColumnOrder(14)
                         .HasDefaultValueSql("false")
                         .HasComment("Đánh dấu bất thường (IP lạ, quốc gia lạ)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("occurred_at")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm");
 
                     b.Property<Guid?>("SessionId")
                         .HasColumnType("uuid")
@@ -2646,6 +3349,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("tenant_id")
                         .HasColumnOrder(1)
                         .HasComment("Tenant");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
@@ -2665,13 +3380,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("Username/email đã nhập");
 
-                    b.HasKey("Id", "OccurredAt")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("login_logs_pkey");
 
-                    b.ToTable("login_logs", "audit", t =>
-                        {
-                            t.ExcludeFromMigrations();
+                    b.HasIndex(new[] { "IpAddress", "OccurredAt" }, "ix_login_logs_ip")
+                        .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "TenantId", "OccurredAt" }, "ix_login_logs_tenant")
+                        .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "UserId", "OccurredAt" }, "ix_login_logs_user")
+                        .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "Id", "OccurredAt" }, "login_logs_id_occurred_at_key")
+                        .IsUnique();
+
+                    b.ToTable("login_logs", null, t =>
+                        {
                             t.HasComment("Lịch sử đăng nhập/đăng xuất/refresh token (thành công & thất bại) kèm IP, thiết bị");
 
                             t.HasCheckConstraint("login_logs_event_type_check", "event_type IN ('LOGIN_SUCCESS','LOGIN_FAILED','LOGOUT','TOKEN_REFRESH','TOKEN_REUSE_DETECTED','MFA_SUCCESS','MFA_FAILED','ACCOUNT_LOCKED','SSO_LOGIN','IMPERSONATE')");
@@ -2687,18 +3418,36 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("occurred_at")
-                        .HasColumnOrder(13)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm");
-
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id")
                         .HasColumnOrder(4)
                         .HasComment("Người thực hiện (NULL = hệ thống)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(19)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
@@ -2724,6 +3473,20 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("ip_address")
                         .HasColumnOrder(10)
                         .HasComment("IP");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(18)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("occurred_at")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm");
 
                     b.Property<string>("Severity")
                         .IsRequired()
@@ -2763,19 +3526,44 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(12)
                         .HasComment("Trace id");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
                         .HasColumnName("user_agent")
                         .HasColumnOrder(11)
                         .HasComment("User-Agent");
 
-                    b.HasKey("Id", "OccurredAt")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("security_events_pkey");
 
-                    b.ToTable("security_events", "audit", t =>
-                        {
-                            t.ExcludeFromMigrations();
+                    b.HasIndex(new[] { "TargetUserId", "OccurredAt" }, "ix_security_events_target")
+                        .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "TenantId", "EventType", "OccurredAt" }, "ix_security_events_tenant")
+                        .IsDescending(false, false, true);
+
+                    b.HasIndex(new[] { "Id", "OccurredAt" }, "security_events_id_occurred_at_key")
+                        .IsUnique();
+
+                    b.ToTable("security_events", null, t =>
+                        {
                             t.HasComment("Sự kiện bảo mật quan trọng: đổi/reset mật khẩu, khóa/mở khóa, thay đổi vai trò/quyền, cấp API key, bật/tắt 2FA");
 
                             t.HasCheckConstraint("security_events_severity_check", "severity IN ('INFO','WARNING','CRITICAL')");
@@ -2784,113 +3572,149 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Config.FeatureFlag", b =>
                 {
-                    b.Property<string>("Key")
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("key")
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("Khóa flag (wms.pos.offline_mode)");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<bool>("DefaultEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("default_enabled")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("false")
                         .HasComment("Mặc định khi không có rule khớp");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Mô tả");
 
                     b.Property<string>("FlagType")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("flag_type")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("'BOOLEAN'")
                         .HasComment("Bật/tắt, theo % rollout, theo biến thể");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("true")
                         .HasComment("Flag còn được đánh giá");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(17)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsKillSwitch")
                         .HasColumnType("boolean")
                         .HasColumnName("is_kill_switch")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("false")
                         .HasComment("Công tắc khẩn cấp tắt tính năng toàn hệ thống");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("key")
+                        .HasColumnOrder(2)
+                        .HasComment("Khóa flag (wms.pos.offline_mode)");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Tên");
 
                     b.Property<string>("Owner")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("owner")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasComment("Người/team phụ trách");
 
                     b.Property<DateOnly?>("RemoveAfter")
                         .HasColumnType("date")
                         .HasColumnName("remove_after")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasComment("Hạn dọn flag khỏi code");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(15)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(16)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<string>("Variants")
                         .HasColumnType("jsonb")
                         .HasColumnName("variants")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Danh sách biến thể (VARIANT)");
 
-                    b.HasKey("Key")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("feature_flags_pkey");
 
-                    b.ToTable("feature_flags", "config", t =>
+                    b.HasAlternateKey("Key")
+                        .HasName("feature_flags_key_key");
+
+                    b.ToTable("feature_flags", null, t =>
                         {
                             t.HasComment("Feature flag bật/tắt tính năng không cần deploy");
 
@@ -2910,92 +3734,117 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("Enabled")
                         .HasColumnType("boolean")
                         .HasColumnName("enabled")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("true")
                         .HasComment("Bật/tắt cho đối tượng");
 
                     b.Property<DateTimeOffset?>("EndAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("end_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Kết thúc hiệu lực");
 
                     b.Property<string>("FlagKey")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("flag_key")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Flag");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<short?>("Percentage")
                         .HasColumnType("smallint")
                         .HasColumnName("percentage")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("% rollout (PERCENTAGE)");
 
                     b.Property<int>("Priority")
                         .HasColumnType("int")
                         .HasColumnName("priority")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("0")
                         .HasComment("Ưu tiên (số lớn xét trước)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("ScopeType")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("scope_type")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Đối tượng áp dụng");
 
                     b.Property<string>("ScopeValue")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("scope_value")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Id hoặc mã đối tượng (uuid, mã gói, production/staging)");
 
                     b.Property<DateTimeOffset?>("StartAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("start_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Bắt đầu hiệu lực");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<string>("Variant")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("variant")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Biến thể trả về (VARIANT)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("feature_flag_rules_pkey");
@@ -3003,7 +3852,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "FlagKey", "ScopeType", "ScopeValue" }, "uq_feature_flag_rules")
                         .IsUnique();
 
-                    b.ToTable("feature_flag_rules", "config", t =>
+                    b.ToTable("feature_flag_rules", null, t =>
                         {
                             t.HasComment("Rule target của flag theo tenant/công ty/chi nhánh/vai trò/user, có thời gian hiệu lực");
 
@@ -3015,104 +3864,140 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Config.Language", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã BCP-47 (vi-VN, en-US)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DateFormat")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("date_format")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("'dd/MM/yyyy'")
                         .HasComment("Định dạng ngày");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Direction")
                         .IsRequired()
                         .HasColumnType("varchar(3)")
                         .HasColumnName("direction")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'LTR'")
                         .HasComment("Hướng chữ");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang hỗ trợ");
 
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean")
                         .HasColumnName("is_default")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("false")
                         .HasComment("Ngôn ngữ mặc định");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("name")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Tên tiếng Việt");
 
                     b.Property<string>("NativeName")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("native_name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Tên bản ngữ (Tiếng Việt, English)");
 
                     b.Property<string>("NumberFormat")
                         .HasColumnType("jsonb")
                         .HasColumnName("number_format")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Dấu thập phân, nhóm nghìn");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("languages_pkey");
 
-                    b.ToTable("languages", "config", t =>
+                    b.HasAlternateKey("Code")
+                        .HasName("languages_code_key");
+
+                    b.ToTable("languages", null, t =>
                         {
                             t.HasComment("Ngôn ngữ hệ thống hỗ trợ");
 
@@ -3122,126 +4007,162 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Config.SettingDefinition", b =>
                 {
-                    b.Property<string>("Key")
-                        .HasColumnType("varchar(200)")
-                        .HasColumnName("key")
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("Khóa cấu hình (hrm.attendance.late_grace_minutes)");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
 
                     b.PrimitiveCollection<List<string>>("AllowedScopes")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("allowed_scopes")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("'{SYSTEM,TENANT}'")
                         .HasComment("Phạm vi được ghi đè: SYSTEM, TENANT, COMPANY, BRANCH, USER");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(16)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DataType")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("data_type")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Kiểu dữ liệu");
 
                     b.Property<string>("DefaultValue")
                         .HasColumnType("jsonb")
                         .HasColumnName("default_value")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Giá trị mặc định");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(20)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(21)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasComment("Giải thích");
 
                     b.Property<string>("GroupName")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("group_name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Nhóm hiển thị trên màn hình cài đặt");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(19)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("false")
                         .HasComment("Trả về cho frontend (không bí mật)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("key")
+                        .HasColumnOrder(2)
+                        .HasComment("Khóa cấu hình (hrm.attendance.late_grace_minutes)");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Tên hiển thị");
 
                     b.Property<string>("Options")
                         .HasColumnType("jsonb")
                         .HasColumnName("options")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasComment("Danh sách lựa chọn (ENUM)");
 
                     b.Property<bool>("RequiresRestart")
                         .HasColumnType("boolean")
                         .HasColumnName("requires_restart")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("false")
                         .HasComment("Cần restart service để có hiệu lực");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(17)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(18)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<string>("Validation")
                         .HasColumnType("jsonb")
                         .HasColumnName("validation")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasComment("Ràng buộc (min, max, regex)");
 
-                    b.HasKey("Key")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("setting_definitions_pkey");
 
-                    b.ToTable("setting_definitions", "config", t =>
+                    b.HasAlternateKey("Key")
+                        .HasName("setting_definitions_key_key");
+
+                    b.ToTable("setting_definitions", null, t =>
                         {
                             t.HasComment("Định nghĩa khóa cấu hình (kiểu dữ liệu, mặc định, phạm vi cho phép ghi đè) — thay cho hardcode");
 
@@ -3271,36 +4192,49 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(8)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid?>("ScopeId")
                         .HasColumnType("uuid")
                         .HasColumnName("scope_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Id tenant/công ty/chi nhánh/user (NULL khi SYSTEM)");
 
                     b.Property<string>("ScopeType")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("scope_type")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Phạm vi");
 
                     b.Property<string>("SettingKey")
                         .IsRequired()
                         .HasColumnType("varchar(200)")
                         .HasColumnName("setting_key")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Khóa cấu hình");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant (denormalize để cache theo tenant)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -3327,6 +4261,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasComment("Giá trị đã mã hóa (kiểu SECRET)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("setting_values_pkey");
 
@@ -3335,7 +4275,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "SettingKey", "ScopeType", "ScopeId" }, "uq_setting_values"), false);
 
-                    b.ToTable("setting_values", "config", t =>
+                    b.ToTable("setting_values", null, t =>
                         {
                             t.HasComment("Giá trị cấu hình theo phạm vi. Thứ tự ưu tiên khi đọc: USER > BRANCH > COMPANY > TENANT > SYSTEM > default_value");
 
@@ -3367,6 +4307,25 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(8)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<bool>("IsMachine")
                         .HasColumnType("boolean")
                         .HasColumnName("is_machine")
@@ -3384,26 +4343,20 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("KeyId")
                         .HasColumnType("uuid")
                         .HasColumnName("key_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Khóa dịch");
 
                     b.Property<string>("LanguageCode")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("language_code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Ngôn ngữ");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant ghi đè (NULL = bản dịch chuẩn)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -3425,6 +4378,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("Nội dung dịch (hỗ trợ ICU {count, plural, ...})");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("translations_pkey");
 
@@ -3433,7 +4392,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "KeyId", "LanguageCode", "TenantId" }, "uq_translations"), false);
 
-                    b.ToTable("translations", "config", t =>
+                    b.ToTable("translations", null, t =>
                         {
                             t.HasComment("Bản dịch theo ngôn ngữ; tenant có thể ghi đè thuật ngữ riêng (VD: \"Nhân viên\" → \"Cộng sự\")");
                         });
@@ -3451,67 +4410,92 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Ngữ cảnh cho người dịch");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("key")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Khóa (button.save, AUTH_INVALID_TOKEN)");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Phân hệ");
 
                     b.Property<string>("Namespace")
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("namespace")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Nhóm: common, errors, validation, hrm, wms, crm");
 
                     b.PrimitiveCollection<List<string>>("Platforms")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("platforms")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("'{WEB,MOBILE,API}'")
                         .HasComment("Nền tảng sử dụng (lọc khi export file JSON)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("translation_keys_pkey");
@@ -3519,7 +4503,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Namespace", "Key" }, "uq_translation_keys")
                         .IsUnique();
 
-                    b.ToTable("translation_keys", "config", t =>
+                    b.ToTable("translation_keys", null, t =>
                         {
                             t.HasComment("Khóa dịch dùng chung (nhãn UI, thông báo lỗi API) theo namespace");
                         });
@@ -3584,6 +4568,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(10)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.PrimitiveCollection<List<string>>("ExposedHeaders")
                         .IsRequired()
                         .HasColumnType("text[]")
@@ -3592,18 +4588,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("'{X-Trace-Id,X-RateLimit-Remaining,Content-Disposition}'")
                         .HasComment("Header trình duyệt được đọc");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<int>("MaxAgeSeconds")
                         .HasColumnType("int")
                         .HasColumnName("max_age_seconds")
                         .HasColumnOrder(8)
                         .HasDefaultValueSql("600")
                         .HasComment("Cache preflight");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -3623,6 +4620,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(12)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("cors_policies_pkey");
 
@@ -3631,7 +4634,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Code" }, "uq_cors_policies"), false);
 
-                    b.ToTable("cors_policies", "gateway", t =>
+                    b.ToTable("cors_policies", null, t =>
                         {
                             t.HasComment("Chính sách CORS (toàn hệ thống hoặc theo tenant khi tenant có domain riêng)");
                         });
@@ -3639,92 +4642,128 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Gateway.ErrorCode", b =>
                 {
-                    b.Property<string>("Code")
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("code")
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("Mã lỗi (AUTH_TOKEN_EXPIRED, HRM_LEAVE_BALANCE_INSUFFICIENT)");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("category")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Nhóm lỗi");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("code")
+                        .HasColumnOrder(2)
+                        .HasComment("Mã lỗi (AUTH_TOKEN_EXPIRED, HRM_LEAVE_BALANCE_INSUFFICIENT)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DefaultMessage")
                         .IsRequired()
                         .HasColumnType("varchar(500)")
                         .HasColumnName("default_message")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Thông báo mặc định tiếng Việt");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Giải thích cho dev / hướng xử lý");
 
                     b.Property<short>("HttpStatus")
                         .HasColumnType("smallint")
                         .HasColumnName("http_status")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("HTTP status tương ứng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsRetryable")
                         .HasColumnType("boolean")
                         .HasColumnName("is_retryable")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("false")
                         .HasComment("Client có nên thử lại");
 
                     b.Property<string>("MessageKey")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("message_key")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasComment("Khóa i18n của thông báo (config.translation_keys)");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("error_codes_pkey");
 
-                    b.ToTable("error_codes", "gateway", t =>
+                    b.HasIndex(new[] { "Code" }, "error_codes_code_key")
+                        .IsUnique();
+
+                    b.ToTable("error_codes", null, t =>
                         {
                             t.HasComment("Mã lỗi chuẩn hóa toàn hệ sinh thái. Response lỗi: {success:false, code, message, traceId, errors[]}");
 
@@ -3747,26 +4786,38 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã cluster (hrm-api, wms-api, auth-api)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<int>("HealthCheckIntervalSeconds")
                         .HasColumnType("int")
                         .HasColumnName("health_check_interval_seconds")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("15")
                         .HasComment("Chu kỳ health check");
 
@@ -3774,7 +4825,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("health_check_path")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'/health'")
                         .HasComment("Đường dẫn health check chủ động");
 
@@ -3782,55 +4833,68 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(5)")
                         .HasColumnName("http_version")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("'1.1'")
                         .HasComment("Phiên bản HTTP tới upstream");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("LoadBalancing")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("load_balancing")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'ROUND_ROBIN'")
                         .HasComment("Thuật toán cân bằng tải");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ");
 
                     b.Property<int>("RequestTimeoutMs")
                         .HasColumnType("int")
                         .HasColumnName("request_timeout_ms")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("30000")
                         .HasComment("Timeout chuyển tiếp");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("clusters_pkey");
@@ -3838,7 +4902,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "clusters_code_key")
                         .IsUnique();
 
-                    b.ToTable("clusters", "gateway", t =>
+                    b.ToTable("clusters", null, t =>
                         {
                             t.HasComment("Cụm upstream (service nội bộ) mà gateway định tuyến tới");
 
@@ -3859,64 +4923,89 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(500)")
                         .HasColumnName("address")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Địa chỉ nội bộ (http://hrm-api:8080)");
 
                     b.Property<Guid>("ClusterId")
                         .HasColumnType("uuid")
                         .HasColumnName("cluster_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Cluster");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang nhận traffic");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên instance (hrm-api-1)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<short>("Weight")
                         .HasColumnType("smallint")
                         .HasColumnName("weight")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("100")
                         .HasComment("Trọng số");
 
@@ -3926,7 +5015,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ClusterId", "Name" }, "uq_gateway_destinations")
                         .IsUnique();
 
-                    b.ToTable("destinations", "gateway", t =>
+                    b.ToTable("destinations", null, t =>
                         {
                             t.HasComment("Địa chỉ instance cụ thể của cluster (container trong Docker network)");
                         });
@@ -3945,95 +5034,114 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("auth_mode")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("'JWT'")
                         .HasComment("Cách xác thực tại gateway: verify JWT cục bộ hoặc introspect với IdP");
 
                     b.Property<int?>("CacheSeconds")
                         .HasColumnType("int")
                         .HasColumnName("cache_seconds")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasComment("Cache response tại gateway (danh mục MDM)");
 
                     b.Property<Guid>("ClusterId")
                         .HasColumnType("uuid")
                         .HasColumnName("cluster_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Cluster đích");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã route");
 
                     b.Property<Guid?>("CorsPolicyId")
                         .HasColumnType("uuid")
                         .HasColumnName("cors_policy_id")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("CORS");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(23)
+                        .HasColumnOrder(24)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(24)
+                        .HasColumnOrder(25)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(29)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(30)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("ForwardHeaders")
                         .HasColumnType("jsonb")
                         .HasColumnName("forward_headers")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasComment("Header thêm khi chuyển tiếp (X-User-Id, X-Tenant-Id, X-Permissions)");
 
                     b.PrimitiveCollection<List<string>>("Hosts")
                         .HasColumnType("text[]")
                         .HasColumnName("hosts")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Host khớp (NULL = tất cả)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(21)
+                        .HasColumnOrder(22)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang bật");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(28)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("MaintenanceMessage")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("maintenance_message")
-                        .HasColumnOrder(22)
+                        .HasColumnOrder(23)
                         .HasComment("Thông báo bảo trì (khi có giá trị gateway trả 503)");
 
                     b.Property<int?>("MaxRequestBodyMb")
                         .HasColumnType("int")
                         .HasColumnName("max_request_body_mb")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasComment("Giới hạn kích thước body (upload)");
 
                     b.PrimitiveCollection<List<string>>("Methods")
                         .HasColumnType("text[]")
                         .HasColumnName("methods")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Method khớp (NULL = tất cả)");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ");
 
                     b.Property<int>("OrderNo")
                         .HasColumnType("int")
                         .HasColumnName("order_no")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự khớp (nhỏ ưu tiên)");
 
@@ -4041,74 +5149,80 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(500)")
                         .HasColumnName("path_pattern")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Mẫu path (/hrm/{**catch-all})");
 
                     b.Property<string>("PathTransform")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("path_transform")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Biến đổi path (bỏ tiền tố /hrm → /api)");
 
                     b.Property<Guid?>("RateLimitPolicyId")
                         .HasColumnType("uuid")
                         .HasColumnName("rate_limit_policy_id")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Rate limit");
 
                     b.Property<string>("RequiredPermission")
                         .HasColumnType("varchar(200)")
                         .HasColumnName("required_permission")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Quyền bắt buộc kiểm tra sớm tại gateway (tùy chọn)");
 
                     b.PrimitiveCollection<List<string>>("RequiredScopes")
                         .HasColumnType("text[]")
                         .HasColumnName("required_scopes")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Scope bắt buộc");
 
                     b.Property<short>("RetryCount")
                         .HasColumnType("smallint")
                         .HasColumnName("retry_count")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasDefaultValueSql("0")
                         .HasComment("Retry khi upstream lỗi (chỉ method idempotent)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid?>("SecurityHeaderPolicyId")
                         .HasColumnType("uuid")
                         .HasColumnName("security_header_policy_id")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Security header");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<int?>("TimeoutMs")
                         .HasColumnType("int")
                         .HasColumnName("timeout_ms")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Timeout riêng (ghi đè cluster)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(25)
+                        .HasColumnOrder(26)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(26)
+                        .HasColumnOrder(27)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<bool>("WrapResponse")
                         .HasColumnType("boolean")
                         .HasColumnName("wrap_response")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasDefaultValueSql("true")
                         .HasComment("Bọc response/lỗi theo định dạng chuẩn");
 
@@ -4118,7 +5232,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "routes_code_key")
                         .IsUnique();
 
-                    b.ToTable("routes", "gateway", t =>
+                    b.ToTable("routes", null, t =>
                         {
                             t.HasComment("Route định tuyến: /auth/*, /hrm/*, /wms/*, /crm/*, /ai/* → cluster nội bộ");
 
@@ -4139,7 +5253,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("algorithm")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'SLIDING_WINDOW'")
                         .HasComment("Thuật toán");
 
@@ -4147,97 +5261,122 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã chính sách (default-user, login-strict, partner-basic)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(17)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên");
 
                     b.Property<string>("PartitionBy")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("partition_by")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Đếm theo khóa nào");
 
                     b.Property<int>("PermitLimit")
                         .HasColumnType("int")
                         .HasColumnName("permit_limit")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Số request cho phép trong cửa sổ");
 
                     b.Property<int>("QueueLimit")
                         .HasColumnType("int")
                         .HasColumnName("queue_limit")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("0")
                         .HasComment("Số request được xếp hàng khi vượt");
 
                     b.Property<short>("RejectStatus")
                         .HasColumnType("smallint")
                         .HasColumnName("reject_status")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("429")
                         .HasComment("HTTP status khi từ chối");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<short?>("Segments")
                         .HasColumnType("smallint")
                         .HasColumnName("segments")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Số phân đoạn (SLIDING_WINDOW)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<int?>("TokensPerPeriod")
                         .HasColumnType("int")
                         .HasColumnName("tokens_per_period")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Token nạp lại mỗi chu kỳ (TOKEN_BUCKET)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("WindowSeconds")
                         .HasColumnType("int")
                         .HasColumnName("window_seconds")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("60")
                         .HasComment("Độ dài cửa sổ (giây)");
 
@@ -4247,7 +5386,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "rate_limit_policies_code_key")
                         .IsUnique();
 
-                    b.ToTable("rate_limit_policies", "gateway", t =>
+                    b.ToTable("rate_limit_policies", null, t =>
                         {
                             t.HasComment("Chính sách rate limit/throttling theo IP, user, tenant, client, API key");
 
@@ -4272,26 +5411,38 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã chính sách (default, strict-admin)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("ForceHttps")
                         .HasColumnType("boolean")
                         .HasColumnName("force_https")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("true")
                         .HasComment("Chuyển hướng HTTP → HTTPS");
 
@@ -4299,34 +5450,47 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("headers")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Map header → giá trị, VD: {\"Strict-Transport-Security\":\"max-age=31536000; includeSubDomains\"}");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.PrimitiveCollection<List<string>>("RemoveHeaders")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("remove_headers")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'{Server,X-Powered-By}'")
                         .HasComment("Header cần gỡ khỏi response");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("security_header_policies_pkey");
@@ -4334,7 +5498,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "security_header_policies_code_key")
                         .IsUnique();
 
-                    b.ToTable("security_header_policies", "gateway", t =>
+                    b.ToTable("security_header_policies", null, t =>
                         {
                             t.HasComment("Bộ security header gắn vào response (HSTS, CSP, X-Frame-Options...)");
                         });
@@ -4362,6 +5526,25 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(10)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<int>("PermitLimit")
                         .HasColumnType("int")
                         .HasColumnName("permit_limit")
@@ -4373,12 +5556,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("policy_id")
                         .HasColumnOrder(2)
                         .HasComment("Chính sách gốc");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -4398,6 +5575,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(8)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<int?>("WindowSeconds")
                         .HasColumnType("int")
                         .HasColumnName("window_seconds")
@@ -4410,7 +5593,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "TenantId", "PolicyId" }, "uq_tenant_rate_limits")
                         .IsUnique();
 
-                    b.ToTable("tenant_rate_limits", "gateway", t =>
+                    b.ToTable("tenant_rate_limits", null, t =>
                         {
                             t.HasComment("Ghi đè hạn mức rate limit cho tenant cụ thể (gói cao cấp được nhiều request hơn)");
                         });
@@ -4418,73 +5601,109 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Iam.ApiScope", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã scope (hrm.employee.read)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Mô tả quyền truy cập");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsSensitive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_sensitive")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("false")
                         .HasComment("Scope nhạy cảm (lương, hợp đồng) cần duyệt khi cấp");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Tên hiển thị");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("api_scopes_pkey");
 
-                    b.ToTable("api_scopes", "iam", t =>
+                    b.HasIndex(new[] { "Code" }, "api_scopes_code_key")
+                        .IsUnique();
+
+                    b.ToTable("api_scopes", null, t =>
                         {
                             t.HasComment("Danh mục scope API cấp cho client/API key (hrm.read, wms.write, openid...)");
                         });
@@ -4502,97 +5721,122 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("BaseRoute")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("base_route")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Tiền tố route trên gateway (/hrm)");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã phân hệ (CORE, HRM, CRM, WMS, AI)");
 
                     b.Property<string>("Color")
                         .HasColumnType("varchar(20)")
                         .HasColumnName("color")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Màu nhận diện");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Mô tả");
 
                     b.Property<string>("Icon")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("icon")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Icon menu");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn sử dụng");
 
                     b.Property<bool>("IsCore")
                         .HasColumnType("boolean")
                         .HasColumnName("is_core")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("false")
                         .HasComment("Phân hệ lõi luôn bật cho mọi tenant");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên phân hệ");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WebUrl")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("web_url")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("URL ứng dụng web của phân hệ");
 
                     b.HasKey("Id")
@@ -4601,7 +5845,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "modules_code_key")
                         .IsUnique();
 
-                    b.ToTable("modules", "iam", t =>
+                    b.ToTable("modules", null, t =>
                         {
                             t.HasComment("Danh mục phân hệ/module của hệ sinh thái (CORE, HRM, CRM, WMS, AI...). Dùng cho phân quyền theo phân hệ và routing");
                         });
@@ -4791,12 +6035,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("true")
                         .HasComment("Bật Refresh Token Rotation");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<DateTimeOffset?>("SecretExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("secret_expires_at")
@@ -4829,13 +6067,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(28)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("oauth_clients_pkey");
 
                     b.HasIndex(new[] { "ClientId" }, "oauth_clients_client_id_key")
                         .IsUnique();
 
-                    b.ToTable("oauth_clients", "iam", t =>
+                    b.ToTable("oauth_clients", null, t =>
                         {
                             t.HasComment("Ứng dụng client (OAuth2/OIDC): Core Admin, HRM Web, HRM Mobile, WMS Mobile, service nội bộ, ứng dụng đối tác");
 
@@ -4859,22 +6103,71 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm đặt mật khẩu này");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(5)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(9)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("password_hash")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Hash mật khẩu cũ");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(6)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(7)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("password_histories_pkey");
@@ -4882,7 +6175,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId", "CreatedAt" }, "ix_password_histories_user")
                         .IsDescending(false, true);
 
-                    b.ToTable("password_histories", "iam", t =>
+                    b.ToTable("password_histories", null, t =>
                         {
                             t.HasComment("Lịch sử mật khẩu để chặn dùng lại N mật khẩu gần nhất");
                         });
@@ -4901,78 +6194,103 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("action_code")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Hành động");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("varchar(200)")
                         .HasColumnName("code")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Mã quyền đầy đủ đưa vào token/policy (HRM:EMPLOYEE:VIEW)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Mô tả");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsSystem")
                         .HasColumnType("boolean")
                         .HasColumnName("is_system")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("true")
                         .HasComment("Quyền do hệ thống khai báo (seed từ code), không cho xóa");
 
                     b.Property<Guid>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phân hệ (denormalize để lọc nhanh)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Tên quyền");
 
                     b.Property<Guid>("ResourceId")
                         .HasColumnType("uuid")
                         .HasColumnName("resource_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tài nguyên");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("permissions_pkey");
@@ -4983,7 +6301,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ResourceId", "ActionCode" }, "uq_permissions_resource_action")
                         .IsUnique();
 
-                    b.ToTable("permissions", "iam", t =>
+                    b.ToTable("permissions", null, t =>
                         {
                             t.HasComment("Quyền cụ thể = tài nguyên × hành động. Mã quyền dạng MODULE:RESOURCE:ACTION (HRM:EMPLOYEE:CREATE)");
                         });
@@ -4991,61 +6309,97 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Iam.PermissionAction", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã hành động");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(10)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("name")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Tên hiển thị (Xem, Thêm, Sửa...)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị trên ma trận phân quyền");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("permission_actions_pkey");
 
-                    b.ToTable("permission_actions", "iam", t =>
+                    b.HasAlternateKey("Code")
+                        .HasName("permission_actions_code_key");
+
+                    b.ToTable("permission_actions", null, t =>
                         {
                             t.HasComment("Danh mục hành động chuẩn (VIEW, CREATE, UPDATE, DELETE, APPROVE, EXPORT, IMPORT, PRINT...)");
                         });
@@ -5063,88 +6417,144 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("ClientId")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("client_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Client được cấp");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
 
                     b.Property<IPAddress>("CreatedIp")
                         .HasColumnType("inet")
                         .HasColumnName("created_ip")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("IP yêu cầu cấp");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Hết hạn");
 
                     b.Property<Guid>("FamilyId")
                         .HasColumnType("uuid")
                         .HasColumnName("family_id")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Họ token: chung cho chuỗi rotation từ một lần đăng nhập");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(20)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<DateTimeOffset>("IssuedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("issued_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm cấp");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_id")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Token trước đó trong chuỗi rotation");
 
                     b.Property<Guid?>("ReplacedById")
                         .HasColumnType("uuid")
                         .HasColumnName("replaced_by_id")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Token mới thay thế (khi đã rotate)");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("revoked_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Thu hồi lúc");
 
                     b.Property<string>("RevokedReason")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("revoked_reason")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Lý do thu hồi");
 
                     b.PrimitiveCollection<List<string>>("Scopes")
                         .HasColumnType("text[]")
                         .HasColumnName("scopes")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Scope được cấp");
 
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("session_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phiên");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("varchar(128)")
                         .HasColumnName("token_hash")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("SHA-256 của refresh token (không lưu bản rõ)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<DateTimeOffset?>("UsedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("used_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Đã dùng để rotate lúc");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("refresh_tokens_pkey");
@@ -5159,7 +6569,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "TokenHash" }, "refresh_tokens_token_hash_key")
                         .IsUnique();
 
-                    b.ToTable("refresh_tokens", "iam", t =>
+                    b.ToTable("refresh_tokens", null, t =>
                         {
                             t.HasComment("Refresh token có rotation: mỗi lần refresh sinh token mới cùng family; dùng lại token cũ → thu hồi cả family (phát hiện đánh cắp)");
                         });
@@ -5178,106 +6588,131 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("code")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Mã tài nguyên (EMPLOYEE, LEAVE_REQUEST, GOODS_RECEIPT)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Icon")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("icon")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Icon menu");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn sử dụng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(17)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsVisible")
                         .HasColumnType("boolean")
                         .HasColumnName("is_visible")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Hiển thị trên menu");
 
                     b.Property<Guid>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phân hệ");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Tên hiển thị");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tài nguyên cha (nhóm menu)");
 
                     b.Property<string>("ResourceType")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("resource_type")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("'FUNCTION'")
                         .HasComment("Loại: nhóm menu, chức năng, báo cáo, API thuần");
 
                     b.Property<string>("Route")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("route")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Route frontend (/hrm/employees)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự menu");
 
                     b.Property<bool>("SupportsDataScope")
                         .HasColumnType("boolean")
                         .HasColumnName("supports_data_scope")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("true")
                         .HasComment("Tài nguyên có áp dụng phạm vi dữ liệu không");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("resources_pkey");
@@ -5285,7 +6720,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ModuleId", "Code" }, "uq_resources_code")
                         .IsUnique();
 
-                    b.ToTable("resources", "iam", t =>
+                    b.ToTable("resources", null, t =>
                         {
                             t.HasComment("Tài nguyên/chức năng (menu, màn hình, API) của từng phân hệ dạng cây. Permission = resource + action");
 
@@ -5295,49 +6730,116 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Iam.RevokedAccessToken", b =>
                 {
-                    b.Property<string>("Jti")
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("jti")
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("JWT ID");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(9)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Hết hạn gốc của token (sau thời điểm này xóa bản ghi)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<string>("Jti")
+                        .IsRequired()
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("jti")
+                        .HasColumnOrder(2)
+                        .HasComment("JWT ID");
 
                     b.Property<string>("Reason")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("reason")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Lý do");
 
                     b.Property<DateTimeOffset>("RevokedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("revoked_at")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thu hồi lúc");
 
                     b.Property<Guid?>("SessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("session_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Phiên");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(10)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("User");
 
-                    b.HasKey("Jti")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("revoked_access_tokens_pkey");
 
                     b.HasIndex(new[] { "ExpiresAt" }, "ix_revoked_tokens_expires");
 
-                    b.ToTable("revoked_access_tokens", "iam", t =>
+                    b.HasIndex(new[] { "Jti" }, "revoked_access_tokens_jti_key")
+                        .IsUnique();
+
+                    b.ToTable("revoked_access_tokens", null, t =>
                         {
                             t.HasComment("Danh sách đen access token (jti) bị thu hồi trước hạn. Bản chính nên ở Redis; bảng này để khôi phục khi Redis mất dữ liệu");
                         });
@@ -5431,12 +6933,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("0")
                         .HasComment("Độ ưu tiên khi hợp nhất data scope (số lớn ưu tiên)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
@@ -5463,10 +6959,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("roles_pkey");
 
-                    b.ToTable("roles", "iam", t =>
+                    b.ToTable("roles", null, t =>
                         {
                             t.HasComment("Vai trò. tenant_id NULL = vai trò mẫu toàn hệ thống (template) để tenant sao chép");
 
@@ -5486,59 +6988,84 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("Conditions")
                         .HasColumnType("jsonb")
                         .HasColumnName("conditions")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Điều kiện ABAC bổ sung (VD: {\"amount_lte\": 50000000})");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DataScope")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("data_scope")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'OWN'")
                         .HasComment("Phạm vi: cá nhân, phòng ban, phòng ban + cấp dưới, chi nhánh, công ty, toàn tenant, tùy chọn");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid>("PermissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("permission_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Quyền");
 
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uuid")
                         .HasColumnName("role_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Vai trò");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("role_permissions_pkey");
@@ -5548,7 +7075,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "RoleId", "PermissionId" }, "uq_role_permissions")
                         .IsUnique();
 
-                    b.ToTable("role_permissions", "iam", t =>
+                    b.ToTable("role_permissions", null, t =>
                         {
                             t.HasComment("Gán quyền cho vai trò kèm phạm vi dữ liệu (Data Scope) trên từng quyền");
 
@@ -5568,59 +7095,84 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IncludeChildren")
                         .HasColumnType("boolean")
                         .HasColumnName("include_children")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("true")
                         .HasComment("Bao gồm đơn vị con");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid>("RolePermissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("role_permission_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Quyền của vai trò");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid>("ScopeId")
                         .HasColumnType("uuid")
                         .HasColumnName("scope_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Id công ty / chi nhánh / phòng ban");
 
                     b.Property<string>("ScopeType")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("scope_type")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Loại đơn vị");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("role_permission_scopes_pkey");
@@ -5628,7 +7180,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "RolePermissionId", "ScopeType", "ScopeId" }, "uq_role_permission_scopes")
                         .IsUnique();
 
-                    b.ToTable("role_permission_scopes", "iam", t =>
+                    b.ToTable("role_permission_scopes", null, t =>
                         {
                             t.HasComment("Danh sách đơn vị cụ thể khi data_scope = CUSTOM (VD: chỉ xem chi nhánh HN01 và HN02)");
 
@@ -5677,6 +7229,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(22)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(26)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(27)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("DeviceLimitAction")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
@@ -5691,6 +7255,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Ép đổi mật khẩu lần đầu");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(25)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<int>("LockoutMinutes")
                         .HasColumnType("int")
@@ -5782,12 +7353,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("true")
                         .HasComment("Bắt buộc 2FA cho admin");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<int?>("SessionIdleMinutes")
                         .HasColumnType("int")
                         .HasColumnName("session_idle_minutes")
@@ -5812,13 +7377,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(24)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("security_policies_pkey");
 
                     b.HasIndex(new[] { "TenantId" }, "security_policies_tenant_id_key")
                         .IsUnique();
 
-                    b.ToTable("security_policies", "iam", t =>
+                    b.ToTable("security_policies", null, t =>
                         {
                             t.HasComment("Chính sách bảo mật tài khoản theo tenant (NULL = mặc định toàn hệ thống)");
 
@@ -5838,72 +7409,121 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("ActivatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("activated_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Bắt đầu ký");
 
                     b.Property<string>("Algorithm")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("algorithm")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasDefaultValueSql("'RS256'")
                         .HasComment("Thuật toán ký");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Gỡ khỏi JWKS sau thời điểm này");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Kid")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("kid")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Key ID (header kid trong JWT)");
 
                     b.Property<string>("PrivateKeyEncrypted")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("private_key_encrypted")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Private key đã mã hóa");
 
                     b.Property<string>("PublicKeyPem")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("public_key_pem")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Public key (công bố qua /.well-known/jwks.json)");
 
                     b.Property<DateTimeOffset?>("RetiredAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("retired_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Ngừng ký");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("status")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("'ACTIVE'")
                         .HasComment("PENDING: công bố trước, ACTIVE: đang ký, RETIRED: chỉ còn verify");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<string>("Usage")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("usage")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'SIGNING'")
                         .HasComment("Mục đích");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("signing_keys_pkey");
@@ -5911,7 +7531,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Kid" }, "signing_keys_kid_key")
                         .IsUnique();
 
-                    b.ToTable("signing_keys", "iam", t =>
+                    b.ToTable("signing_keys", null, t =>
                         {
                             t.HasComment("Khóa ký JWT (RS256/ES256) phục vụ JWKS và xoay vòng khóa định kỳ");
 
@@ -5945,11 +7565,30 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(9)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
                         .HasColumnOrder(5)
                         .HasComment("Ngày hết hạn (NULL = vô thời hạn)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean")
@@ -5969,12 +7608,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("module_id")
                         .HasColumnOrder(2)
                         .HasComment("Phân hệ");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Settings")
                         .IsRequired()
@@ -6009,13 +7642,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(11)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("tenant_modules_pkey");
 
                     b.HasIndex(new[] { "TenantId", "ModuleId" }, "uq_tenant_modules")
                         .IsUnique();
 
-                    b.ToTable("tenant_modules", "iam", t =>
+                    b.ToTable("tenant_modules", null, t =>
                         {
                             t.HasComment("Phân hệ được kích hoạt cho từng tenant (gói thuê bao). User chỉ vào được phân hệ tenant đã mua");
                         });
@@ -6278,12 +7917,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasComment("Thời điểm xác thực SĐT");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("SecurityStamp")
                         .IsRequired()
                         .HasColumnType("varchar(64)")
@@ -6339,6 +7972,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(2)
                         .HasComment("Tên đăng nhập (duy nhất trong tenant)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("users_pkey");
 
@@ -6367,7 +8006,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Username" }, "uq_users_username"), false);
 
-                    b.ToTable("users", "iam", t =>
+                    b.ToTable("users", null, t =>
                         {
                             t.HasComment("Tài khoản người dùng dùng chung SSO cho mọi phân hệ (Web & Mobile)");
 
@@ -6393,93 +8032,149 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("AppVersion")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("app_version")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Phiên bản app");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("DeviceKey")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("device_key")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Định danh thiết bị do client sinh và lưu (fingerprint/installation id)");
 
                     b.Property<string>("DeviceName")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("device_name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Tên thiết bị (iPhone 15 của Hoàng, Chrome - Windows)");
 
                     b.Property<DateTimeOffset>("FirstSeenAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("first_seen_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Lần đầu thấy");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(20)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsTrusted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_trusted")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("false")
                         .HasComment("Thiết bị tin cậy (bỏ qua 2FA)");
 
                     b.Property<IPAddress>("LastIp")
                         .HasColumnType("inet")
                         .HasColumnName("last_ip")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("IP gần nhất");
 
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_seen_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("now()")
                         .HasComment("Lần cuối hoạt động");
 
                     b.Property<string>("OsVersion")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("os_version")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Phiên bản hệ điều hành");
 
                     b.Property<string>("Platform")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("platform")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Nền tảng");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("revoked_at")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Thời điểm thu hồi");
 
                     b.Property<Guid?>("RevokedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("revoked_by")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Người thu hồi");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("status")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("'ACTIVE'")
                         .HasComment("Trạng thái");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
                         .HasColumnName("user_agent")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("User-Agent gần nhất");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_devices_pkey");
@@ -6487,7 +8182,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId", "DeviceKey" }, "uq_user_devices")
                         .IsUnique();
 
-                    b.ToTable("user_devices", "iam", t =>
+                    b.ToTable("user_devices", null, t =>
                         {
                             t.HasComment("Thiết bị đã đăng nhập của user (giới hạn thiết bị, thu hồi theo thiết bị)");
 
@@ -6506,16 +8201,48 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(9)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<DateTimeOffset?>("LastUsedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_used_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Lần dùng gần nhất");
 
                     b.Property<DateTimeOffset>("LinkedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("linked_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm liên kết");
 
@@ -6523,27 +8250,51 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("provider")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Nhà cung cấp định danh");
 
                     b.Property<string>("ProviderEmail")
                         .HasColumnType("citext")
                         .HasColumnName("provider_email")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Email phía provider");
 
                     b.Property<string>("ProviderKey")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("provider_key")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Id user phía provider (sub)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(10)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_external_logins_pkey");
@@ -6551,7 +8302,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Provider", "ProviderKey" }, "uq_external_login")
                         .IsUnique();
 
-                    b.ToTable("user_external_logins", "iam", t =>
+                    b.ToTable("user_external_logins", null, t =>
                         {
                             t.HasComment("Liên kết đăng nhập ngoài (Google, Microsoft, Zalo, Apple) với tài khoản nội bộ");
 
@@ -6571,90 +8322,115 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BranchId")
                         .HasColumnType("uuid")
                         .HasColumnName("branch_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Chi nhánh");
 
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid")
                         .HasColumnName("company_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Công ty");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid?>("DepartmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("department_id")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Phòng ban");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsManager")
                         .HasColumnType("boolean")
                         .HasColumnName("is_manager")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("false")
                         .HasComment("Là quản lý của đơn vị này");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean")
                         .HasColumnName("is_primary")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("false")
                         .HasComment("Đơn vị chính");
 
                     b.Property<string>("JobTitle")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("job_title")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Chức danh tại đơn vị này");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
 
                     b.Property<DateOnly>("ValidFrom")
                         .HasColumnType("date")
                         .HasColumnName("valid_from")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("current_date")
                         .HasComment("Hiệu lực từ ngày");
 
                     b.Property<DateOnly?>("ValidTo")
                         .HasColumnType("date")
                         .HasColumnName("valid_to")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Hiệu lực đến ngày (NULL = vô thời hạn)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_org_assignments_pkey");
@@ -6667,7 +8443,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("is_primary");
 
-                    b.ToTable("user_org_assignments", "iam", t =>
+                    b.ToTable("user_org_assignments", null, t =>
                         {
                             t.HasComment("Gán user vào nhiều công ty/chi nhánh/phòng ban (kiêm nhiệm). Dùng để tính Data Scope và chọn ngữ cảnh làm việc");
                         });
@@ -6685,71 +8461,96 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DataScope")
                         .HasColumnType("varchar(20)")
                         .HasColumnName("data_scope")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Phạm vi dữ liệu khi GRANT");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Effect")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("effect")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'GRANT'")
                         .HasComment("GRANT = cấp thêm, DENY = chặn (ưu tiên cao nhất)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid>("PermissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("permission_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Quyền");
 
                     b.Property<string>("Reason")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("reason")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Lý do");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
 
                     b.Property<DateTimeOffset?>("ValidTo")
                         .HasColumnType("timestamptz")
                         .HasColumnName("valid_to")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Hết hạn");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_permission_overrides_pkey");
@@ -6757,7 +8558,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId", "PermissionId" }, "uq_user_permission_overrides")
                         .IsUnique();
 
-                    b.ToTable("user_permission_overrides", "iam", t =>
+                    b.ToTable("user_permission_overrides", null, t =>
                         {
                             t.HasComment("Quyền gán trực tiếp cho user (cộng thêm hoặc loại trừ so với vai trò)");
 
@@ -6780,27 +8581,76 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("code_hash")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Hash mã khôi phục");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(6)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(10)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(7)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(8)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<DateTimeOffset?>("UsedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("used_at")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Thời điểm đã dùng (NULL = chưa dùng)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_recovery_codes_pkey");
@@ -6808,7 +8658,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId" }, "ix_recovery_codes_user")
                         .HasFilter("used_at IS NULL");
 
-                    b.ToTable("user_recovery_codes", "iam", t =>
+                    b.ToTable("user_recovery_codes", null, t =>
                         {
                             t.HasComment("Mã khôi phục 2FA dùng một lần");
                         });
@@ -6826,82 +8676,107 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BranchId")
                         .HasColumnType("uuid")
                         .HasColumnName("branch_id")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Vai trò chỉ có hiệu lực trong chi nhánh này");
 
                     b.Property<Guid?>("CompanyId")
                         .HasColumnType("uuid")
                         .HasColumnName("company_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Vai trò chỉ có hiệu lực trong công ty này (NULL = mọi công ty)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid?>("GrantedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("granted_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Người cấp quyền");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Note")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("note")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Ghi chú lý do cấp");
 
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uuid")
                         .HasColumnName("role_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Vai trò");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
 
                     b.Property<DateTimeOffset>("ValidFrom")
                         .HasColumnType("timestamptz")
                         .HasColumnName("valid_from")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Hiệu lực từ");
 
                     b.Property<DateTimeOffset?>("ValidTo")
                         .HasColumnType("timestamptz")
                         .HasColumnName("valid_to")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Hiệu lực đến (gán quyền tạm thời)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_roles_pkey");
@@ -6913,7 +8788,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "UserId", "RoleId", "CompanyId", "BranchId" }, "uq_user_roles"), false);
 
-                    b.ToTable("user_roles", "iam", t =>
+                    b.ToTable("user_roles", null, t =>
                         {
                             t.HasComment("Gán vai trò cho user, có thể giới hạn vai trò trong một công ty/chi nhánh và có thời hạn");
                         });
@@ -6954,6 +8829,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasComment("Ngữ cảnh công ty đang chọn");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(17)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(22)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(23)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid?>("DeviceId")
                         .HasColumnType("uuid")
                         .HasColumnName("device_id")
@@ -6977,6 +8877,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("ip_address")
                         .HasColumnOrder(8)
                         .HasComment("IP khởi tạo");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(21)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("timestamptz")
@@ -7016,6 +8923,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(1)
                         .HasComment("Tenant");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(19)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
                         .HasColumnName("user_agent")
@@ -7028,6 +8947,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(2)
                         .HasComment("User");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("user_sessions_pkey");
 
@@ -7036,7 +8961,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId" }, "ix_user_sessions_user_active")
                         .HasFilter("revoked_at IS NULL");
 
-                    b.ToTable("user_sessions", "iam", t =>
+                    b.ToTable("user_sessions", null, t =>
                         {
                             t.HasComment("Phiên đăng nhập SSO (sid). Một phiên trên một thiết bị/client; thu hồi phiên → thu hồi toàn bộ refresh token");
 
@@ -7058,60 +8983,109 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("int")
                         .HasColumnName("attempts")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("0")
                         .HasComment("Số lần nhập sai OTP");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
 
                     b.Property<IPAddress>("CreatedIp")
                         .HasColumnType("inet")
                         .HasColumnName("created_ip")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("IP yêu cầu");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Hết hạn");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("purpose")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Mục đích");
 
                     b.Property<string>("Target")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("target")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Email/SĐT nhận token (khi đổi email)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("token_hash")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Hash của token/OTP (không lưu bản rõ)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<DateTimeOffset?>("UsedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("used_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Đã dùng lúc");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("verification_tokens_pkey");
@@ -7121,7 +9095,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     b.HasIndex(new[] { "UserId", "Purpose" }, "ix_verification_tokens_user");
 
-                    b.ToTable("verification_tokens", "iam", t =>
+                    b.ToTable("verification_tokens", null, t =>
                         {
                             t.HasComment("Token một lần: quên mật khẩu, xác thực email/SĐT, lời mời kích hoạt, OTP đăng nhập");
 
@@ -7163,6 +9137,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(21)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(25)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(26)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("Environment")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
@@ -7182,6 +9168,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("ip_whitelist")
                         .HasColumnOrder(10)
                         .HasComment("IP được phép");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(24)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("KeyHash")
                         .IsRequired()
@@ -7246,12 +9239,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(19)
                         .HasComment("Người thu hồi");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.PrimitiveCollection<List<string>>("Scopes")
                         .IsRequired()
                         .HasColumnType("text[]")
@@ -7293,6 +9280,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("0")
                         .HasComment("Tổng số lần gọi");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("api_keys_pkey");
 
@@ -7302,7 +9295,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "KeyPrefix" }, "api_keys_key_prefix_key")
                         .IsUnique();
 
-                    b.ToTable("api_keys", "integration", t =>
+                    b.ToTable("api_keys", null, t =>
                         {
                             t.HasComment("API Key cấp cho đối tác/ứng dụng ngoài gọi vào ERP, có scope, IP whitelist, hạn dùng");
 
@@ -7430,12 +9423,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(10)
                         .HasComment("OAuth refresh token đã mã hóa");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
@@ -7468,10 +9455,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(19)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("connections_pkey");
 
-                    b.ToTable("connections", "integration", t =>
+                    b.ToTable("connections", null, t =>
                         {
                             t.HasComment("Kết nối tới hệ thống bên thứ 3 (lưu credential/OAuth token): sàn TMĐT, nhà cung cấp HĐĐT, ngân hàng, Zalo OA...");
 
@@ -7494,46 +9487,65 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("consumer_service")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên service tiêu thụ (wms-api, accounting-api)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("EventTypeCode")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("event_type_code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Event");
 
                     b.Property<string>("HandlerName")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("handler_name")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Handler xử lý (tham khảo)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang hoạt động");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<short>("MaxRetries")
                         .HasColumnType("smallint")
                         .HasColumnName("max_retries")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("5")
                         .HasComment("Số lần retry trước khi vào DLQ");
 
@@ -7541,26 +9553,32 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("queue_name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Queue nhận");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("event_subscriptions_pkey");
@@ -7568,7 +9586,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "EventTypeCode", "ConsumerService" }, "uq_event_subscriptions")
                         .IsUnique();
 
-                    b.ToTable("event_subscriptions", "integration", t =>
+                    b.ToTable("event_subscriptions", null, t =>
                         {
                             t.HasComment("Service nào tiêu thụ event nào (bản đồ luồng dữ liệu giữa các phân hệ)");
                         });
@@ -7595,6 +9613,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(9)
                         .HasDefaultValueSql("now()")
                         .HasComment("Tạo lúc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
@@ -7629,6 +9665,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("Id nội bộ");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<DateTimeOffset?>("LastSyncedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_synced_at")
@@ -7641,6 +9684,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(1)
                         .HasComment("Tenant");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("external_mappings_pkey");
 
@@ -7649,7 +9710,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "TenantId", "ExternalSystem", "EntityType", "ExternalId" }, "uq_external_mapping_ext")
                         .IsUnique();
 
-                    b.ToTable("external_mappings", "integration", t =>
+                    b.ToTable("external_mappings", null, t =>
                         {
                             t.HasComment("Ánh xạ id nội bộ ↔ id hệ thống ngoài (sản phẩm ERP ↔ item_id Shopee, NV ↔ mã trên máy chấm công)");
                         });
@@ -7663,6 +9724,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(0)
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(19)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(24)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(25)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid?>("EmittedMessageId")
                         .HasColumnType("uuid")
@@ -7693,6 +9779,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("http_method")
                         .HasColumnOrder(4)
                         .HasComment("Phương thức");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(23)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("ParsedPayload")
                         .HasColumnType("jsonb")
@@ -7753,7 +9846,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid")
                         .HasColumnName("source_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Nguồn");
 
                     b.Property<IPAddress>("SourceIp")
@@ -7773,8 +9866,26 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("inbound_requests_pkey");
@@ -7786,7 +9897,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("external_id IS NOT NULL AND status <> 'DUPLICATE'");
 
-                    b.ToTable("inbound_requests", "integration", t =>
+                    b.ToTable("inbound_requests", null, t =>
                         {
                             t.HasComment("Nhật ký request inbound nhận được (lưu raw để đối soát, xử lý lại, chống trùng)");
 
@@ -7909,12 +10020,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("Nhà cung cấp");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("SecretEncrypted")
                         .HasColumnType("text")
                         .HasColumnName("secret_encrypted")
@@ -7965,13 +10070,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(21)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("inbound_sources_pkey");
 
                     b.HasIndex(new[] { "EndpointToken" }, "inbound_sources_endpoint_token_key")
                         .IsUnique();
 
-                    b.ToTable("inbound_sources", "integration", t =>
+                    b.ToTable("inbound_sources", null, t =>
                         {
                             t.HasComment("Nguồn webhook INBOUND: cổng thanh toán (VNPay, SePay, VietQR), sàn TMĐT, máy chấm công, hóa đơn điện tử");
 
@@ -7985,40 +10096,80 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Integration.InboxMessage", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("ConsumerService")
+                        .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("consumer_service")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Service tiêu thụ");
 
-                    b.Property<Guid>("MessageId")
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
-                        .HasColumnName("message_id")
-                        .HasColumnOrder(1)
-                        .HasComment("Message id");
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Error")
                         .HasColumnType("text")
                         .HasColumnName("error")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasComment("Lỗi");
 
                     b.Property<string>("EventTypeCode")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("event_type_code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Mã event");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id")
+                        .HasColumnOrder(3)
+                        .HasComment("Message id");
 
                     b.Property<DateTimeOffset?>("ProcessedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("processed_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Xử lý xong lúc");
 
                     b.Property<DateTimeOffset>("ReceivedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("received_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("now()")
                         .HasComment("Nhận lúc");
 
@@ -8026,14 +10177,41 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("status")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'PROCESSED'")
                         .HasComment("Trạng thái");
 
-                    b.HasKey("ConsumerService", "MessageId")
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("inbox_messages_pkey");
 
-                    b.ToTable("inbox_messages", "integration", t =>
+                    b.HasIndex(new[] { "ConsumerService", "MessageId" }, "inbox_messages_consumer_service_message_id_key")
+                        .IsUnique();
+
+                    b.ToTable("inbox_messages", null, t =>
                         {
                             t.HasComment("Inbox/Idempotency: consumer ghi nhận message đã xử lý để không xử lý trùng");
 
@@ -8043,105 +10221,141 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Integration.IntegrationEventType", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã event (domain.entity.action)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Mô tả");
 
                     b.Property<string>("ExchangeName")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("exchange_name")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Exchange/stream trên RabbitMQ/Redis Streams");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("false")
                         .HasComment("Cho phép đối tác đăng ký qua webhook");
 
                     b.Property<Guid>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ phát (producer)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Tên event");
 
                     b.Property<string>("PayloadSchema")
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_schema")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("JSON Schema của payload (validate + sinh tài liệu)");
 
                     b.Property<string>("RoutingKey")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("routing_key")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasComment("Routing key");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SchemaVersion")
                         .HasColumnType("int")
                         .HasColumnName("schema_version")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("1")
                         .HasComment("Phiên bản schema payload");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(15)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
-                        .HasName("event_types_pkey");
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
-                    b.ToTable("event_types", "integration", t =>
+                    b.HasKey("Id")
+                        .HasName("integration_event_types_pkey");
+
+                    b.HasAlternateKey("Code")
+                        .HasName("integration_event_types_code_key");
+
+                    b.ToTable("integration_event_types", null, t =>
                         {
                             t.HasComment("Danh mục event nghiệp vụ trao đổi giữa các phân hệ (crm.order.confirmed, hrm.payroll.closed...) kèm schema payload");
                         });
@@ -8175,6 +10389,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("0")
                         .HasComment("Số lần thử");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(19)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("EventTypeCode")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
@@ -8189,6 +10428,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasDefaultValueSql("'{}'")
                         .HasComment("Header (user, correlation...)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(18)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("LastError")
                         .HasColumnType("text")
@@ -8243,6 +10489,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(7)
                         .HasComment("Trace id");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("outbox_messages_pkey");
 
@@ -8251,7 +10515,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "NextAttemptAt" }, "ix_outbox_pending")
                         .HasFilter("status IN ('PENDING','FAILED')");
 
-                    b.ToTable("outbox_messages", "integration", t =>
+                    b.ToTable("outbox_messages", null, t =>
                         {
                             t.HasComment("Transactional Outbox: event được ghi cùng transaction nghiệp vụ, worker đọc và publish lên message broker");
 
@@ -8278,15 +10542,33 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("completed_at")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(15)
                         .HasComment("Hoàn tất lúc");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasDefaultValueSql("now()")
                         .HasComment("Tạo lúc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<int?>("DurationMs")
                         .HasColumnType("int")
@@ -8297,7 +10579,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("EndpointId")
                         .HasColumnType("uuid")
                         .HasColumnName("endpoint_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Endpoint");
 
                     b.Property<string>("Error")
@@ -8312,6 +10594,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("event_type_code")
                         .HasColumnOrder(4)
                         .HasComment("Mã event");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(20)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid?>("MessageId")
                         .HasColumnType("uuid")
@@ -8368,8 +10657,26 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("webhook_deliveries_pkey");
@@ -8380,7 +10687,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "NextRetryAt" }, "ix_webhook_deliveries_retry")
                         .HasFilter("status = 'RETRYING'");
 
-                    b.ToTable("webhook_deliveries", "integration", t =>
+                    b.ToTable("webhook_deliveries", null, t =>
                         {
                             t.HasComment("Nhật ký từng lần gửi webhook outbound (payload, response, retry)");
 
@@ -8521,12 +10828,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("'EXPONENTIAL'")
                         .HasComment("Chiến lược retry");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("SecretEncrypted")
                         .HasColumnType("text")
                         .HasColumnName("secret_encrypted")
@@ -8573,10 +10874,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("URL nhận");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("webhook_endpoints_pkey");
 
-                    b.ToTable("webhook_endpoints", "integration", t =>
+                    b.ToTable("webhook_endpoints", null, t =>
                         {
                             t.HasComment("Endpoint webhook OUTBOUND: ERP bắn sự kiện ra hệ thống bên thứ 3");
 
@@ -8600,7 +10907,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<bool>("AllowConcurrent")
                         .HasColumnType("boolean")
                         .HasColumnName("allow_concurrent")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("false")
                         .HasComment("Cho phép chạy chồng");
 
@@ -8608,104 +10915,123 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã job (core.storage.cleanup_temp_files)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(21)
+                        .HasColumnOrder(22)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(22)
+                        .HasColumnOrder(23)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("CronExpression")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("cron_expression")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Lịch cron (NULL = chỉ chạy tay)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(27)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(28)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Mô tả");
 
                     b.Property<string>("Handler")
                         .IsRequired()
                         .HasColumnType("varchar(500)")
                         .HasColumnName("handler")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Tên class/handler thực thi (Assembly.Namespace.JobClass)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(26)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("is_enabled")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang bật");
 
                     b.Property<DateTimeOffset?>("LastRunAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_run_at")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasComment("Lần chạy gần nhất");
 
                     b.Property<string>("LastStatus")
                         .HasColumnType("varchar(15)")
                         .HasColumnName("last_status")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasComment("Kết quả lần gần nhất");
 
                     b.Property<short>("MaxRetries")
                         .HasColumnType("smallint")
                         .HasColumnName("max_retries")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasDefaultValueSql("3")
                         .HasComment("Số lần retry khi lỗi");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ sở hữu");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Tên");
 
                     b.Property<DateTimeOffset?>("NextRunAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("next_run_at")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasComment("Lần chạy kế tiếp (tham khảo)");
 
                     b.Property<bool>("NotifyOnFailure")
                         .HasColumnType("boolean")
                         .HasColumnName("notify_on_failure")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasDefaultValueSql("true")
                         .HasComment("Gửi cảnh báo khi lỗi");
 
                     b.PrimitiveCollection<List<Guid>>("NotifyUserIds")
                         .HasColumnType("uuid[]")
                         .HasColumnName("notify_user_ids")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasComment("Người nhận cảnh báo");
 
                     b.Property<string>("Parameters")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("parameters")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("'{}'")
                         .HasComment("Tham số mặc định");
 
@@ -8713,33 +11039,33 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("queue_name")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("'default'")
                         .HasComment("Hàng đợi");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<bool>("RunPerTenant")
                         .HasColumnType("boolean")
                         .HasColumnName("run_per_tenant")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("false")
                         .HasComment("Chạy lặp qua từng tenant");
 
                     b.Property<string>("TargetService")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("target_service")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Service chạy job (hrm-worker, core-worker)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<int>("TimeoutSeconds")
                         .HasColumnType("int")
                         .HasColumnName("timeout_seconds")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("3600")
                         .HasComment("Thời gian chạy tối đa");
 
@@ -8747,29 +11073,35 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("timezone")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("'Asia/Ho_Chi_Minh'")
                         .HasComment("Múi giờ tính cron");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(23)
+                        .HasColumnOrder(24)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(24)
+                        .HasColumnOrder(25)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Id")
-                        .HasName("definitions_pkey");
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
-                    b.HasIndex(new[] { "Code" }, "definitions_code_key")
+                    b.HasKey("Id")
+                        .HasName("job_definitions_pkey");
+
+                    b.HasIndex(new[] { "Code" }, "job_definitions_code_key")
                         .IsUnique();
 
-                    b.ToTable("definitions", "job", t =>
+                    b.ToTable("job_definitions", null, t =>
                         {
                             t.HasComment("Danh mục job định kỳ toàn hệ thống (chốt công cuối ngày, cảnh báo tồn kho, dọn file rác, đồng bộ tỷ giá...)");
                         });
@@ -8790,6 +11122,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(15)
                         .HasDefaultValueSql("1")
                         .HasComment("Lần thử");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(19)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(24)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(25)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<int?>("DurationMs")
                         .HasColumnType("int")
@@ -8827,10 +11184,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(17)
                         .HasComment("Kết thúc");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(23)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Job");
 
                     b.Property<string>("Parameters")
@@ -8875,7 +11239,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant (job chạy theo tenant)");
 
                     b.Property<string>("TriggerType")
@@ -8892,6 +11256,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("User chạy tay");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<string>("WorkerNode")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("worker_node")
@@ -8907,7 +11289,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Status", "StartedAt" }, "ix_job_executions_status")
                         .IsDescending(false, true);
 
-                    b.ToTable("executions", "job", t =>
+                    b.ToTable("executions", null, t =>
                         {
                             t.HasComment("Lịch sử từng lần chạy job");
 
@@ -8945,6 +11327,25 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("Cron riêng");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("is_enabled")
@@ -8955,7 +11356,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Job");
 
                     b.Property<string>("Parameters")
@@ -8964,16 +11365,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("Tham số riêng (merge với mặc định)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -8988,13 +11383,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("tenant_overrides_pkey");
 
                     b.HasIndex(new[] { "JobId", "TenantId" }, "uq_job_tenant_overrides")
                         .IsUnique();
 
-                    b.ToTable("tenant_overrides", "job", t =>
+                    b.ToTable("tenant_overrides", null, t =>
                         {
                             t.HasComment("Ghi đè lịch/tham số job theo tenant (VD: tenant A chốt công lúc 23:00, tenant B lúc 01:00)");
                         });
@@ -9013,141 +11414,166 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("code")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Mã đơn vị hành chính (mã GSO/Tổng cục Thống kê)");
 
                     b.Property<string>("CountryCode")
                         .IsRequired()
                         .HasColumnType("char(2)")
                         .HasColumnName("country_code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Quốc gia");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(24)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(25)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateOnly?>("EffectiveFrom")
                         .HasColumnType("date")
                         .HasColumnName("effective_from")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Ngày bắt đầu hiệu lực (VD: 2025-07-01 cho đơn vị sau sáp nhập)");
 
                     b.Property<DateOnly?>("EffectiveTo")
                         .HasColumnType("date")
                         .HasColumnName("effective_to")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Ngày hết hiệu lực (đơn vị đã giải thể/sáp nhập); NULL = còn hiệu lực");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("full_name")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Tên đầy đủ (VD: Phường Hoàn Kiếm, Thành phố Hà Nội)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng để chọn trên form mới");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(23)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<decimal?>("Latitude")
                         .HasColumnType("numeric(10,7)")
                         .HasColumnName("latitude")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Vĩ độ trung tâm");
 
                     b.Property<short>("Level")
                         .HasColumnType("smallint")
                         .HasColumnName("level")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Cấp: 1 = tỉnh, 2 = huyện (mô hình cũ) hoặc xã (mô hình 2 cấp), 3 = xã (mô hình cũ)");
 
                     b.Property<decimal?>("Longitude")
                         .HasColumnType("numeric(10,7)")
                         .HasColumnName("longitude")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Kinh độ trung tâm");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Tên ngắn (VD: Hoàn Kiếm)");
 
                     b.Property<string>("NameEn")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name_en")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Tên tiếng Anh / không dấu");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Đơn vị cấp trên (NULL nếu là cấp tỉnh)");
 
                     b.Property<string>("Path")
                         .HasColumnType("text")
                         .HasColumnName("path")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Đường dẫn mã từ gốc, VD: '01/00004' để truy vấn cây nhanh");
 
                     b.Property<string>("PhoneAreaCode")
                         .HasColumnType("varchar(10)")
                         .HasColumnName("phone_area_code")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Mã vùng điện thoại cố định (024, 028...)");
 
                     b.Property<string>("PostalCode")
                         .HasColumnType("varchar(10)")
                         .HasColumnName("postal_code")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Mã bưu chính");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("UnitType")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("unit_type")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Loại đơn vị: TP trực thuộc TW, tỉnh, quận, huyện, thị xã, phường, xã, thị trấn, đặc khu");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(21)
+                        .HasColumnOrder(22)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("administrative_units_pkey");
@@ -9165,7 +11591,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "CountryCode", "Code" }, "uq_admin_unit_code")
                         .IsUnique();
 
-                    b.ToTable("administrative_units", "mdm", t =>
+                    b.ToTable("administrative_units", null, t =>
                         {
                             t.HasComment("Đơn vị hành chính phân cấp tổng quát (Tỉnh/TP → [Quận/Huyện] → Phường/Xã). Hỗ trợ cả mô hình 3 cấp cũ và 2 cấp sau sáp nhập 01/07/2025 nhờ effective_from/effective_to");
 
@@ -9187,71 +11613,96 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateOnly>("EffectiveDate")
                         .HasColumnType("date")
                         .HasColumnName("effective_date")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Ngày có hiệu lực theo nghị quyết");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(12)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("LegalReference")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("legal_reference")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Số nghị quyết/văn bản pháp lý");
 
                     b.Property<string>("MappingType")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("mapping_type")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'MERGE'")
                         .HasComment("Hình thức: sáp nhập, chia tách, đổi tên, một phần");
 
                     b.Property<Guid>("NewUnitId")
                         .HasColumnType("uuid")
                         .HasColumnName("new_unit_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Đơn vị mới thay thế");
 
                     b.Property<string>("Note")
                         .HasColumnType("text")
                         .HasColumnName("note")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Ghi chú");
 
                     b.Property<Guid>("OldUnitId")
                         .HasColumnType("uuid")
                         .HasColumnName("old_unit_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Đơn vị cũ");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("administrative_unit_mappings_pkey");
@@ -9259,7 +11710,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "OldUnitId", "NewUnitId" }, "uq_admin_unit_mapping")
                         .IsUnique();
 
-                    b.ToTable("administrative_unit_mappings", "mdm", t =>
+                    b.ToTable("administrative_unit_mappings", null, t =>
                         {
                             t.HasComment("Bảng ánh xạ đơn vị hành chính cũ → mới (sau sáp nhập), dùng để chuyển đổi địa chỉ lịch sử");
 
@@ -9279,94 +11730,119 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("Bin")
                         .HasColumnType("varchar(10)")
                         .HasColumnName("bin")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Mã BIN NAPAS dùng tạo VietQR (970436...)");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Mã viết tắt (VCB, TCB, MB...)");
 
                     b.Property<string>("CountryCode")
                         .IsRequired()
                         .HasColumnType("char(2)")
                         .HasColumnName("country_code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasDefaultValueSql("'VN'")
                         .HasComment("Quốc gia");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn sử dụng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("LogoUrl")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("logo_url")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Logo ngân hàng");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Tên đầy đủ");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("ShortName")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("short_name")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Tên ngắn (Vietcombank)");
 
                     b.Property<bool>("SupportsVietqr")
                         .HasColumnType("boolean")
                         .HasColumnName("supports_vietqr")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("false")
                         .HasComment("Hỗ trợ VietQR hay không");
 
                     b.Property<string>("SwiftCode")
                         .HasColumnType("varchar(11)")
                         .HasColumnName("swift_code")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Mã SWIFT/BIC");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("banks_pkey");
@@ -9374,7 +11850,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "banks_code_key")
                         .IsUnique();
 
-                    b.ToTable("banks", "mdm", t =>
+                    b.ToTable("banks", null, t =>
                         {
                             t.HasComment("Danh mục ngân hàng (dùng cho VietQR, chi lương, thanh toán NCC)");
                         });
@@ -9382,109 +11858,145 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Mdm.Country", b =>
                 {
-                    b.Property<string>("Code")
-                        .HasColumnType("char(2)")
-                        .HasColumnName("code")
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasColumnOrder(0)
-                        .HasComment("Mã ISO 3166-1 alpha-2 (VN, US, JP...)");
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
 
                     b.Property<string>("Alpha3Code")
                         .IsRequired()
                         .HasColumnType("char(3)")
                         .HasColumnName("alpha3_code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Mã ISO alpha-3 (VNM, USA...)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("char(2)")
+                        .HasColumnName("code")
+                        .HasColumnOrder(2)
+                        .HasComment("Mã ISO 3166-1 alpha-2 (VN, US, JP...)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("CurrencyCode")
                         .HasColumnType("char(3)")
                         .HasColumnName("currency_code")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Tiền tệ mặc định của quốc gia (VND)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("FlagEmoji")
                         .HasColumnType("varchar(10)")
                         .HasColumnName("flag_emoji")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasComment("Cờ dạng emoji để hiển thị nhanh");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn sử dụng hay không");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Tên tiếng Việt");
 
                     b.Property<string>("NameEn")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name_en")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasComment("Tên tiếng Anh");
 
                     b.Property<string>("NumericCode")
                         .HasColumnType("char(3)")
                         .HasColumnName("numeric_code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Mã số ISO (704 = Việt Nam)");
 
                     b.Property<string>("PhoneCode")
                         .HasColumnType("varchar(10)")
                         .HasColumnName("phone_code")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Mã vùng điện thoại quốc tế (+84)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(15)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("countries_pkey");
+
+                    b.HasAlternateKey("Code")
+                        .HasName("countries_code_key");
 
                     b.HasIndex(new[] { "Alpha3Code" }, "countries_alpha3_code_key")
                         .IsUnique();
 
-                    b.ToTable("countries", "mdm", t =>
+                    b.ToTable("countries", null, t =>
                         {
                             t.HasComment("Danh mục quốc gia theo chuẩn ISO 3166");
                         });
@@ -9492,69 +12004,90 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Mdm.Currency", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("char(3)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã ISO 4217 (VND, USD, EUR...)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<short>("DecimalPlaces")
                         .HasColumnType("smallint")
                         .HasColumnName("decimal_places")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("0")
                         .HasComment("Số chữ số thập phân khi hiển thị/làm tròn (VND = 0, USD = 2)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn sử dụng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Tên tiền tệ (Đồng Việt Nam)");
 
                     b.Property<string>("NumericCode")
                         .HasColumnType("char(3)")
                         .HasColumnName("numeric_code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Mã số ISO (704 = VND)");
 
                     b.Property<decimal>("RoundingUnit")
                         .HasColumnType("numeric(18,6)")
                         .HasColumnName("rounding_unit")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("1")
                         .HasComment("Đơn vị làm tròn tối thiểu (VD: 1, 100, 1000 VND)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị");
 
@@ -9562,33 +12095,48 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("symbol")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Ký hiệu hiển thị (₫, $)");
 
                     b.Property<string>("SymbolPosition")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("symbol_position")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("'SUFFIX'")
                         .HasComment("Vị trí ký hiệu khi hiển thị");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("currencies_pkey");
 
-                    b.ToTable("currencies", "mdm", t =>
+                    b.HasAlternateKey("Code")
+                        .HasName("currencies_code_key");
+
+                    b.ToTable("currencies", null, t =>
                         {
                             t.HasComment("Danh mục tiền tệ theo ISO 4217");
 
@@ -9598,106 +12146,142 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Mdm.DocumentType", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã loại chứng từ (HRM_EMPLOYEE, HRM_LEAVE_REQUEST, WMS_GOODS_RECEIPT, CRM_QUOTATION)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasComment("Mô tả");
 
                     b.Property<string>("EntityTable")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("entity_table")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasComment("Bảng dữ liệu gốc bên phân hệ (tham khảo)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Phân hệ sở hữu");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Tên loại chứng từ");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<bool>("SupportsAttachment")
                         .HasColumnType("boolean")
                         .HasColumnName("supports_attachment")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("true")
                         .HasComment("Cho phép đính kèm file");
 
                     b.Property<bool>("SupportsNumbering")
                         .HasColumnType("boolean")
                         .HasColumnName("supports_numbering")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("true")
                         .HasComment("Có sinh mã tự động");
 
                     b.Property<bool>("SupportsWorkflow")
                         .HasColumnType("boolean")
                         .HasColumnName("supports_workflow")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("false")
                         .HasComment("Có thể gắn quy trình duyệt");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(14)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(15)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WorkflowVariables")
                         .HasColumnType("jsonb")
                         .HasColumnName("workflow_variables")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(10)
                         .HasComment("Khai báo biến dùng trong điều kiện rẽ nhánh, VD: [{\"name\":\"amount\",\"type\":\"number\",\"label\":\"Tổng tiền\"}]");
 
-                    b.HasKey("Code")
+                    b.HasKey("Id")
                         .HasName("document_types_pkey");
 
-                    b.ToTable("document_types", "mdm", t =>
+                    b.HasAlternateKey("Code")
+                        .HasName("document_types_code_key");
+
+                    b.ToTable("document_types", null, t =>
                         {
                             t.HasComment("Danh mục loại chứng từ/đối tượng nghiệp vụ toàn hệ sinh thái — khóa chung để gắn sinh mã, workflow, file, thông báo");
                         });
@@ -9725,6 +12309,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(10)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<DateTimeOffset>("EffectiveAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("effective_at")
@@ -9737,6 +12333,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("from_currency")
                         .HasColumnOrder(2)
                         .HasComment("Tiền tệ nguồn (USD)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Note")
                         .HasColumnType("varchar(255)")
@@ -9757,12 +12360,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasDefaultValueSql("'TRANSFER'")
                         .HasComment("Loại tỷ giá: mua TM, mua CK, bán, chuyển khoản, trung tâm NHNN, hạch toán");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -9797,6 +12394,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(12)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("exchange_rates_pkey");
 
@@ -9808,7 +12411,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "FromCurrency", "ToCurrency", "RateType", "EffectiveAt" }, "uq_exchange_rates"), false);
 
-                    b.ToTable("exchange_rates", "mdm", t =>
+                    b.ToTable("exchange_rates", null, t =>
                         {
                             t.HasComment("Tỷ giá quy đổi theo thời điểm");
 
@@ -9948,12 +12551,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("3.00")
                         .HasComment("Hệ số lương nếu đi làm ngày này (BLLĐ: tối thiểu 300%)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
@@ -9972,6 +12569,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(19)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<short?>("Year")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("smallint")
@@ -9989,7 +12592,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "TenantId", "Year" }, "ix_holidays_tenant_year")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("holidays", "mdm", t =>
+                    b.ToTable("holidays", null, t =>
                         {
                             t.HasComment("Ngày lễ quốc gia (tenant_id NULL) và ngày lễ/nghỉ riêng của tenant");
 
@@ -10006,39 +12609,89 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(6)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(7)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
                     b.Property<long>("CurrentValue")
                         .HasColumnType("bigint")
                         .HasColumnName("current_value")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Giá trị đã cấp gần nhất");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("PeriodKey")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("period_key")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Khóa kỳ: 'ALL', '2026', '202611', '20261121'");
 
                     b.Property<Guid>("RuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("rule_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Quy tắc");
 
                     b.Property<string>("ScopeKey")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("scope_key")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'-'")
                         .HasComment("Khóa phạm vi: '-' hoặc id công ty/chi nhánh");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("now()")
                         .HasComment("Lần cấp gần nhất");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(9)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("numbering_counters_pkey");
@@ -10046,7 +12699,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "RuleId", "PeriodKey", "ScopeKey" }, "uq_numbering_counters")
                         .IsUnique();
 
-                    b.ToTable("numbering_counters", "mdm", t =>
+                    b.ToTable("numbering_counters", null, t =>
                         {
                             t.HasComment("Bộ đếm hiện tại của từng quy tắc theo kỳ (năm/tháng/ngày) và phạm vi (công ty/chi nhánh)");
                         });
@@ -10174,12 +12827,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("'NEVER'")
                         .HasComment("Chu kỳ reset số đếm");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<long>("StartValue")
                         .HasColumnType("bigint")
                         .HasColumnName("start_value")
@@ -10218,6 +12865,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(20)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("numbering_rules_pkey");
 
@@ -10227,7 +12880,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "DocumentTypeCode", "CompanyId", "BranchId" }, "uq_numbering_rules_scope"), false);
 
-                    b.ToTable("numbering_rules", "mdm", t =>
+                    b.ToTable("numbering_rules", null, t =>
                         {
                             t.HasComment("Quy tắc sinh mã tự động theo loại chứng từ, có thể riêng theo công ty/chi nhánh. Pattern hỗ trợ token {YYYY} {YY} {MM} {DD} {YYMM} {BRANCH} {COMPANY} {0001}");
 
@@ -10278,6 +12931,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(15)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(19)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<DateOnly>("EffectiveFrom")
                         .HasColumnType("date")
                         .HasColumnName("effective_from")
@@ -10310,6 +12975,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("false")
                         .HasComment("Mặc định khi tạo chứng từ");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(18)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<string>("LegalReference")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("legal_reference")
@@ -10328,12 +13000,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("rate")
                         .HasColumnOrder(5)
                         .HasComment("Thuế suất % (NULL với KCT/KKKNT không tính thuế)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
@@ -10367,6 +13033,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(17)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("tax_rates_pkey");
 
@@ -10375,7 +13047,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Code", "EffectiveFrom" }, "uq_tax_rates"), false);
 
-                    b.ToTable("tax_rates", "mdm", t =>
+                    b.ToTable("tax_rates", null, t =>
                         {
                             t.HasComment("Biểu thuế suất có hiệu lực theo thời gian (VD: VAT giảm 8% theo từng nghị định)");
 
@@ -10389,67 +13061,103 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Mdm.TaxType", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("code")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Mã loại thuế (VAT, CIT, PIT, IMPORT, SCT)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(7)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(4)
                         .HasComment("Mô tả");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("name")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("Tên loại thuế");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(8)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Code")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("tax_types_pkey");
 
-                    b.ToTable("tax_types", "mdm", t =>
+                    b.HasAlternateKey("Code")
+                        .HasName("tax_types_code_key");
+
+                    b.ToTable("tax_types", null, t =>
                         {
                             t.HasComment("Loại thuế (GTGT, TNDN, TNCN, Nhập khẩu, Tiêu thụ đặc biệt...)");
                         });
@@ -10550,12 +13258,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("1")
                         .HasComment("1 đơn vị này = ratio_to_base đơn vị cơ sở (1 tấn = 1000 kg). Với nhóm COUNT, quy đổi theo sản phẩm do WMS quản lý");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
@@ -10587,10 +13289,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(15)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("uoms_pkey");
 
-                    b.ToTable("uoms", "mdm", t =>
+                    b.ToTable("uoms", null, t =>
                         {
                             t.HasComment("Đơn vị tính (Cái, Hộp, Thùng, Kg, Lít...). Quy đổi trong cùng nhóm qua ratio_to_base");
 
@@ -10611,46 +13319,71 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã nhóm (COUNT, WEIGHT, VOLUME, LENGTH, AREA, TIME)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(9)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên nhóm");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("uom_categories_pkey");
@@ -10658,7 +13391,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "uom_categories_code_key")
                         .IsUnique();
 
-                    b.ToTable("uom_categories", "mdm", t =>
+                    b.ToTable("uom_categories", null, t =>
                         {
                             t.HasComment("Nhóm đơn vị tính (Số lượng, Khối lượng, Thể tích, Chiều dài, Diện tích, Thời gian)");
                         });
@@ -10686,6 +13419,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(7)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<decimal>("Factor")
                         .HasColumnType("numeric(20,8)")
                         .HasColumnName("factor")
@@ -10698,6 +13443,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(2)
                         .HasComment("Đơn vị nguồn");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<string>("RoundingMode")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
@@ -10705,12 +13457,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(5)
                         .HasDefaultValueSql("'HALF_UP'")
                         .HasComment("Kiểu làm tròn");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -10736,6 +13482,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(9)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("uom_conversions_pkey");
 
@@ -10744,7 +13496,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "FromUomId", "ToUomId" }, "uq_uom_conversions"), false);
 
-                    b.ToTable("uom_conversions", "mdm", t =>
+                    b.ToTable("uom_conversions", null, t =>
                         {
                             t.HasComment("Bảng quy đổi ĐVT tổng quát giữa hai đơn vị (kể cả khác nhóm/không tỷ lệ cố định). Quy đổi riêng theo sản phẩm (1 thùng = 24 lon) đặt ở WMS");
 
@@ -10831,12 +13583,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(4)
                         .HasComment("Tên lịch");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<decimal>("StandardHoursPerDay")
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("standard_hours_per_day")
@@ -10878,10 +13624,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("work_calendars_pkey");
 
-                    b.ToTable("work_calendars", "mdm", t =>
+                    b.ToTable("work_calendars", null, t =>
                         {
                             t.HasComment("Lịch làm việc (ca hành chính chuẩn) dùng chung: HRM tính công, WMS tính hạn giao, CRM hẹn lịch chăm sóc");
 
@@ -10901,14 +13653,404 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BranchId")
                         .HasColumnType("uuid")
                         .HasColumnName("branch_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Chỉ áp dụng cho chi nhánh này (NULL = toàn lịch)");
 
                     b.Property<Guid>("CalendarId")
                         .HasColumnType("uuid")
                         .HasColumnName("calendar_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Lịch");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (iam.users.id)");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time")
+                        .HasColumnName("end_time")
+                        .HasColumnOrder(10)
+                        .HasComment("Giờ kết thúc");
+
+                    b.Property<DateOnly>("ExceptionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("exception_date")
+                        .HasColumnOrder(4)
+                        .HasComment("Ngày ngoại lệ");
+
+                    b.Property<string>("ExceptionType")
+                        .IsRequired()
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("exception_type")
+                        .HasColumnOrder(5)
+                        .HasComment("Loại: nghỉ, làm bù, nửa ngày, giờ đặc biệt");
+
+                    b.Property<Guid?>("HolidayId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("holiday_id")
+                        .HasColumnOrder(6)
+                        .HasComment("Liên kết ngày lễ (nếu do lễ)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_paid")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("true")
+                        .HasComment("Nghỉ có lương");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("name")
+                        .HasColumnOrder(7)
+                        .HasComment("Tên/lý do");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time")
+                        .HasColumnName("start_time")
+                        .HasColumnOrder(9)
+                        .HasComment("Giờ bắt đầu (CUSTOM_HOURS)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("work_calendar_exceptions_pkey");
+
+                    b.HasIndex(new[] { "CalendarId", "ExceptionDate", "BranchId" }, "uq_work_calendar_exceptions")
+                        .IsUnique()
+                        .HasFilter("NOT is_deleted");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "CalendarId", "ExceptionDate", "BranchId" }, "uq_work_calendar_exceptions"), false);
+
+                    b.ToTable("work_calendar_exceptions", null, t =>
+                        {
+                            t.HasComment("Ngoại lệ của lịch: nghỉ riêng công ty, ngày làm bù, ngày đổi ca... áp dụng cho cả lịch hoặc riêng chi nhánh");
+
+                            t.HasCheckConstraint("work_calendar_exceptions_exception_type_check", "exception_type IN ('DAY_OFF','MAKEUP_WORKDAY','HALF_DAY','CUSTOM_HOURS')");
+                        });
+                });
+
+            modelBuilder.Entity("CorePlatformApi.Domain.Entities.Mdm.WorkCalendarWeekday", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính");
+
+                    b.Property<TimeOnly?>("BreakEnd")
+                        .HasColumnType("time")
+                        .HasColumnName("break_end")
+                        .HasColumnOrder(9)
+                        .HasComment("Kết thúc nghỉ trưa");
+
+                    b.Property<TimeOnly?>("BreakStart")
+                        .HasColumnType("time")
+                        .HasColumnName("break_start")
+                        .HasColumnOrder(8)
+                        .HasComment("Bắt đầu nghỉ trưa");
+
+                    b.Property<Guid>("CalendarId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("calendar_id")
+                        .HasColumnOrder(2)
+                        .HasComment("Lịch");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(10)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<short>("DayOfWeek")
+                        .HasColumnType("smallint")
+                        .HasColumnName("day_of_week")
+                        .HasColumnOrder(3)
+                        .HasComment("Thứ theo ISO: 1 = Thứ Hai ... 7 = Chủ Nhật");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time")
+                        .HasColumnName("end_time")
+                        .HasColumnOrder(7)
+                        .HasComment("Giờ kết thúc");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<bool>("IsWorkingDay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_working_day")
+                        .HasColumnOrder(4)
+                        .HasDefaultValueSql("true")
+                        .HasComment("Có làm việc không");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time")
+                        .HasColumnName("start_time")
+                        .HasColumnOrder(6)
+                        .HasComment("Giờ bắt đầu");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal>("WorkRatio")
+                        .HasColumnType("numeric(3,2)")
+                        .HasColumnName("work_ratio")
+                        .HasColumnOrder(5)
+                        .HasDefaultValueSql("1")
+                        .HasComment("Tỷ lệ công (1 = cả ngày, 0.5 = nửa ngày T7)");
+
+                    b.HasKey("Id")
+                        .HasName("work_calendar_weekdays_pkey");
+
+                    b.HasIndex(new[] { "CalendarId", "DayOfWeek" }, "uq_work_calendar_weekdays")
+                        .IsUnique();
+
+                    b.ToTable("work_calendar_weekdays", null, t =>
+                        {
+                            t.HasComment("Mẫu ngày làm việc trong tuần của lịch (T2..CN, giờ vào/ra, nghỉ trưa)");
+
+                            t.HasCheckConstraint("work_calendar_weekdays_day_of_week_check", "day_of_week BETWEEN 1 AND 7");
+
+                            t.HasCheckConstraint("work_calendar_weekdays_work_ratio_check", "work_ratio BETWEEN 0 AND 1");
+                        });
+                });
+
+            modelBuilder.Entity("CorePlatformApi.Domain.Entities.Monitor.HealthCheck", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính");
+
+                    b.Property<DateTimeOffset>("CheckedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("checked_at")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("details")
+                        .HasColumnOrder(6)
+                        .HasComment("Chi tiết từng dependency (db, redis, rabbitmq) trả về từ /health");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error")
+                        .HasColumnOrder(7)
+                        .HasComment("Lỗi");
+
+                    b.Property<short?>("HttpStatus")
+                        .HasColumnType("smallint")
+                        .HasColumnName("http_status")
+                        .HasColumnOrder(4)
+                        .HasComment("HTTP status");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<int?>("ResponseMs")
+                        .HasColumnType("int")
+                        .HasColumnName("response_ms")
+                        .HasColumnOrder(5)
+                        .HasComment("Thời gian phản hồi");
+
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id")
+                        .HasColumnOrder(2)
+                        .HasComment("Service");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("status")
+                        .HasColumnOrder(3)
+                        .HasComment("Kết quả");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("health_checks_pkey");
+
+                    b.HasIndex(new[] { "Id", "CheckedAt" }, "health_checks_id_checked_at_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "ServiceId", "CheckedAt" }, "ix_health_checks_service")
+                        .IsDescending(false, true);
+
+                    b.ToTable("health_checks", null, t =>
+                        {
+                            t.HasComment("Kết quả từng lần health check");
+
+                            t.HasCheckConstraint("health_checks_status_check", "status IN ('HEALTHY','DEGRADED','UNHEALTHY')");
+                        });
+                });
+
+            modelBuilder.Entity("CorePlatformApi.Domain.Entities.Monitor.Incident", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính");
+
+                    b.Property<Guid?>("AcknowledgedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("acknowledged_by")
+                        .HasColumnOrder(9)
+                        .HasComment("Người tiếp nhận");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
@@ -10933,32 +14075,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by")
                         .HasColumnOrder(16)
-                        .HasComment("Người xóa mềm (iam.users.id)");
-
-                    b.Property<TimeOnly?>("EndTime")
-                        .HasColumnType("time")
-                        .HasColumnName("end_time")
-                        .HasColumnOrder(9)
-                        .HasComment("Giờ kết thúc");
-
-                    b.Property<DateOnly>("ExceptionDate")
-                        .HasColumnType("date")
-                        .HasColumnName("exception_date")
-                        .HasColumnOrder(3)
-                        .HasComment("Ngày ngoại lệ");
-
-                    b.Property<string>("ExceptionType")
-                        .IsRequired()
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("exception_type")
-                        .HasColumnOrder(4)
-                        .HasComment("Loại: nghỉ, làm bù, nửa ngày, giờ đặc biệt");
-
-                    b.Property<Guid?>("HolidayId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("holiday_id")
-                        .HasColumnOrder(5)
-                        .HasComment("Liên kết ngày lễ (nếu do lễ)");
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -10967,31 +14084,56 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("false")
                         .HasComment("Cờ xóa mềm (true = đã xóa)");
 
-                    b.Property<bool>("IsPaid")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_paid")
-                        .HasColumnOrder(7)
-                        .HasDefaultValueSql("true")
-                        .HasComment("Nghỉ có lương");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("name")
-                        .HasColumnOrder(6)
-                        .HasComment("Tên/lý do");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<TimeOnly?>("StartTime")
-                        .HasColumnType("time")
-                        .HasColumnName("start_time")
+                    b.Property<string>("Resolution")
+                        .HasColumnType("text")
+                        .HasColumnName("resolution")
                         .HasColumnOrder(8)
-                        .HasComment("Giờ bắt đầu (CUSTOM_HOURS)");
+                        .HasComment("Cách xử lý");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("resolved_at")
+                        .HasColumnOrder(6)
+                        .HasComment("Khắc phục lúc");
+
+                    b.Property<string>("RootCause")
+                        .HasColumnType("text")
+                        .HasColumnName("root_cause")
+                        .HasColumnOrder(7)
+                        .HasComment("Nguyên nhân");
+
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id")
+                        .HasColumnOrder(2)
+                        .HasComment("Service");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("severity")
+                        .HasColumnOrder(3)
+                        .HasDefaultValueSql("'MAJOR'")
+                        .HasComment("Mức độ");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("started_at")
+                        .HasColumnOrder(5)
+                        .HasComment("Bắt đầu sự cố");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("title")
+                        .HasColumnOrder(4)
+                        .HasComment("Tiêu đề");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
@@ -11005,290 +14147,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.HasKey("Id")
-                        .HasName("work_calendar_exceptions_pkey");
-
-                    b.HasIndex(new[] { "CalendarId", "ExceptionDate", "BranchId" }, "uq_work_calendar_exceptions")
-                        .IsUnique()
-                        .HasFilter("NOT is_deleted");
-
-                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "CalendarId", "ExceptionDate", "BranchId" }, "uq_work_calendar_exceptions"), false);
-
-                    b.ToTable("work_calendar_exceptions", "mdm", t =>
-                        {
-                            t.HasComment("Ngoại lệ của lịch: nghỉ riêng công ty, ngày làm bù, ngày đổi ca... áp dụng cho cả lịch hoặc riêng chi nhánh");
-
-                            t.HasCheckConstraint("work_calendar_exceptions_exception_type_check", "exception_type IN ('DAY_OFF','MAKEUP_WORKDAY','HALF_DAY','CUSTOM_HOURS')");
-                        });
-                });
-
-            modelBuilder.Entity("CorePlatformApi.Domain.Entities.Mdm.WorkCalendarWeekday", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasColumnOrder(0)
-                        .HasDefaultValueSql("gen_random_uuid()")
-                        .HasComment("Khóa chính");
-
-                    b.Property<TimeOnly?>("BreakEnd")
-                        .HasColumnType("time")
-                        .HasColumnName("break_end")
-                        .HasColumnOrder(8)
-                        .HasComment("Kết thúc nghỉ trưa");
-
-                    b.Property<TimeOnly?>("BreakStart")
-                        .HasColumnType("time")
-                        .HasColumnName("break_start")
-                        .HasColumnOrder(7)
-                        .HasComment("Bắt đầu nghỉ trưa");
-
-                    b.Property<Guid>("CalendarId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("calendar_id")
-                        .HasColumnOrder(1)
-                        .HasComment("Lịch");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at")
-                        .HasColumnOrder(9)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm tạo bản ghi");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by")
-                        .HasColumnOrder(10)
-                        .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
-
-                    b.Property<short>("DayOfWeek")
-                        .HasColumnType("smallint")
-                        .HasColumnName("day_of_week")
-                        .HasColumnOrder(2)
-                        .HasComment("Thứ theo ISO: 1 = Thứ Hai ... 7 = Chủ Nhật");
-
-                    b.Property<TimeOnly?>("EndTime")
-                        .HasColumnType("time")
-                        .HasColumnName("end_time")
-                        .HasColumnOrder(6)
-                        .HasComment("Giờ kết thúc");
-
-                    b.Property<bool>("IsWorkingDay")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_working_day")
-                        .HasColumnOrder(3)
-                        .HasDefaultValueSql("true")
-                        .HasComment("Có làm việc không");
-
-                    b.Property<uint>("RowVersion")
+                    b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
-
-                    b.Property<TimeOnly?>("StartTime")
-                        .HasColumnType("time")
-                        .HasColumnName("start_time")
-                        .HasColumnOrder(5)
-                        .HasComment("Giờ bắt đầu");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
-                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
-                        .HasComment("Người cập nhật gần nhất (iam.users.id)");
-
-                    b.Property<decimal>("WorkRatio")
-                        .HasColumnType("numeric(3,2)")
-                        .HasColumnName("work_ratio")
-                        .HasColumnOrder(4)
-                        .HasDefaultValueSql("1")
-                        .HasComment("Tỷ lệ công (1 = cả ngày, 0.5 = nửa ngày T7)");
-
-                    b.HasKey("Id")
-                        .HasName("work_calendar_weekdays_pkey");
-
-                    b.HasIndex(new[] { "CalendarId", "DayOfWeek" }, "uq_work_calendar_weekdays")
-                        .IsUnique();
-
-                    b.ToTable("work_calendar_weekdays", "mdm", t =>
-                        {
-                            t.HasComment("Mẫu ngày làm việc trong tuần của lịch (T2..CN, giờ vào/ra, nghỉ trưa)");
-
-                            t.HasCheckConstraint("work_calendar_weekdays_day_of_week_check", "day_of_week BETWEEN 1 AND 7");
-
-                            t.HasCheckConstraint("work_calendar_weekdays_work_ratio_check", "work_ratio BETWEEN 0 AND 1");
-                        });
-                });
-
-            modelBuilder.Entity("CorePlatformApi.Domain.Entities.Monitor.HealthCheck", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasColumnOrder(0)
-                        .HasDefaultValueSql("gen_random_uuid()")
-                        .HasComment("Khóa chính");
-
-                    b.Property<DateTimeOffset>("CheckedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("checked_at")
-                        .HasColumnOrder(7)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm");
-
-                    b.Property<string>("Details")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("details")
-                        .HasColumnOrder(5)
-                        .HasComment("Chi tiết từng dependency (db, redis, rabbitmq) trả về từ /health");
-
-                    b.Property<string>("Error")
-                        .HasColumnType("text")
-                        .HasColumnName("error")
-                        .HasColumnOrder(6)
-                        .HasComment("Lỗi");
-
-                    b.Property<short?>("HttpStatus")
-                        .HasColumnType("smallint")
-                        .HasColumnName("http_status")
-                        .HasColumnOrder(3)
-                        .HasComment("HTTP status");
-
-                    b.Property<int?>("ResponseMs")
-                        .HasColumnType("int")
-                        .HasColumnName("response_ms")
-                        .HasColumnOrder(4)
-                        .HasComment("Thời gian phản hồi");
-
-                    b.Property<Guid>("ServiceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("service_id")
-                        .HasColumnOrder(1)
-                        .HasComment("Service");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("varchar(15)")
-                        .HasColumnName("status")
-                        .HasColumnOrder(2)
-                        .HasComment("Kết quả");
-
-                    b.HasKey("Id", "CheckedAt")
-                        .HasName("health_checks_pkey");
-
-                    b.ToTable("health_checks", "monitor", t =>
-                        {
-                            t.ExcludeFromMigrations();
-
-                            t.HasComment("Kết quả từng lần health check");
-
-                            t.HasCheckConstraint("health_checks_status_check", "status IN ('HEALTHY','DEGRADED','UNHEALTHY')");
-                        });
-                });
-
-            modelBuilder.Entity("CorePlatformApi.Domain.Entities.Monitor.Incident", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasColumnOrder(0)
-                        .HasDefaultValueSql("gen_random_uuid()")
-                        .HasComment("Khóa chính");
-
-                    b.Property<Guid?>("AcknowledgedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("acknowledged_by")
-                        .HasColumnOrder(8)
-                        .HasComment("Người tiếp nhận");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at")
-                        .HasColumnOrder(9)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm tạo bản ghi");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by")
-                        .HasColumnOrder(10)
-                        .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
-
-                    b.Property<string>("Resolution")
-                        .HasColumnType("text")
-                        .HasColumnName("resolution")
-                        .HasColumnOrder(7)
-                        .HasComment("Cách xử lý");
-
-                    b.Property<DateTimeOffset?>("ResolvedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("resolved_at")
-                        .HasColumnOrder(5)
-                        .HasComment("Khắc phục lúc");
-
-                    b.Property<string>("RootCause")
-                        .HasColumnType("text")
-                        .HasColumnName("root_cause")
-                        .HasColumnOrder(6)
-                        .HasComment("Nguyên nhân");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<Guid>("ServiceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("service_id")
-                        .HasColumnOrder(1)
-                        .HasComment("Service");
-
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasColumnType("varchar(10)")
-                        .HasColumnName("severity")
-                        .HasColumnOrder(2)
-                        .HasDefaultValueSql("'MAJOR'")
-                        .HasComment("Mức độ");
-
-                    b.Property<DateTimeOffset>("StartedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("started_at")
-                        .HasColumnOrder(4)
-                        .HasComment("Bắt đầu sự cố");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("title")
-                        .HasColumnOrder(3)
-                        .HasComment("Tiêu đề");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
-                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
-                        .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.HasKey("Id")
                         .HasName("incidents_pkey");
 
-                    b.ToTable("incidents", "monitor", t =>
+                    b.ToTable("incidents", null, t =>
                         {
                             t.HasComment("Sự cố (downtime) mở/đóng tự động từ health check, phục vụ báo cáo uptime");
 
@@ -11308,26 +14176,26 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<short>("AlertAfterFailures")
                         .HasColumnType("smallint")
                         .HasColumnName("alert_after_failures")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("3")
                         .HasComment("Cảnh báo sau N lần lỗi liên tiếp");
 
                     b.Property<string>("AlertChannels")
                         .HasColumnType("jsonb")
                         .HasColumnName("alert_channels")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Kênh cảnh báo (email, Telegram, Slack webhook)");
 
                     b.Property<string>("BaseUrl")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("base_url")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("URL nội bộ");
 
                     b.Property<int>("CheckIntervalSeconds")
                         .HasColumnType("int")
                         .HasColumnName("check_interval_seconds")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("30")
                         .HasComment("Chu kỳ kiểm tra");
 
@@ -11335,127 +14203,152 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã service (auth-api, hrm-api, core-worker, postgres, redis, rabbitmq, minio)");
 
                     b.Property<int>("ConsecutiveFailures")
                         .HasColumnType("int")
                         .HasColumnName("consecutive_failures")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasDefaultValueSql("0")
                         .HasComment("Số lần lỗi liên tiếp");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("CurrentStatus")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("current_status")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("'UNKNOWN'")
                         .HasComment("Trạng thái hiện tại");
 
                     b.Property<string>("CurrentVersion")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("current_version")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Phiên bản đang chạy (đọc từ /health)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(25)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(26)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Environment")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("environment")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("'PRODUCTION'")
                         .HasComment("Môi trường");
 
                     b.Property<string>("HealthUrl")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("health_url")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("URL health (/health/ready)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang giám sát");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(24)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<DateTimeOffset?>("LastCheckedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_checked_at")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasComment("Kiểm tra gần nhất");
 
                     b.Property<DateTimeOffset?>("LastStatusChangeAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_status_change_at")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasComment("Đổi trạng thái gần nhất");
 
                     b.Property<string>("LivenessUrl")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("liveness_url")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("URL liveness (/health/live)");
 
                     b.Property<Guid?>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Phân hệ");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("ServiceType")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("service_type")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'API'")
                         .HasComment("Loại");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<int>("TimeoutMs")
                         .HasColumnType("int")
                         .HasColumnName("timeout_ms")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("5000")
                         .HasComment("Timeout");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(21)
+                        .HasColumnOrder(22)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(22)
+                        .HasColumnOrder(23)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("services_pkey");
@@ -11463,7 +14356,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "Code" }, "services_code_key")
                         .IsUnique();
 
-                    b.ToTable("services", "monitor", t =>
+                    b.ToTable("services", null, t =>
                         {
                             t.HasComment("Danh mục service trong hệ sinh thái và endpoint /health để Docker, Reverse Proxy, Uptime Monitor kiểm tra");
 
@@ -11488,66 +14381,109 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("app_code")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("App (HRM_MOBILE, WMS_MOBILE)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Đăng ký lúc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(11)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid?>("DeviceId")
                         .HasColumnType("uuid")
                         .HasColumnName("device_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Thiết bị");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn hiệu lực (FCM báo UNREGISTERED → false)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<DateTimeOffset?>("LastUsedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("last_used_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Lần gửi thành công gần nhất");
 
                     b.Property<string>("Locale")
                         .HasColumnType("varchar(10)")
                         .HasColumnName("locale")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Ngôn ngữ app trên thiết bị");
 
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("provider")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Nhà cung cấp");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("token")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Token push");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(12)
                         .HasComment("Cập nhật token lúc");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("device_tokens_pkey");
@@ -11555,7 +14491,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId" }, "ix_device_tokens_user")
                         .HasFilter("is_active");
 
-                    b.ToTable("device_tokens", "notify", t =>
+                    b.ToTable("device_tokens", null, t =>
                         {
                             t.HasComment("Push token của thiết bị (FCM registration token / APNs device token)");
 
@@ -11586,6 +14522,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(18)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(19)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uuid")
                         .HasColumnName("entity_id")
@@ -11609,6 +14563,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("idempotency_key")
                         .HasColumnOrder(10)
                         .HasComment("Chống gửi trùng khi event bị phát lại");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(17)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("ModuleCode")
                         .HasColumnType("varchar(30)")
@@ -11656,6 +14617,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(12)
                         .HasComment("Trace id liên kết request gốc");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("notifications_pkey");
 
@@ -11665,7 +14644,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("idempotency_key IS NOT NULL");
 
-                    b.ToTable("notifications", "notify", t =>
+                    b.ToTable("notifications", null, t =>
                         {
                             t.HasComment("Thông báo gốc phát sinh từ một sự kiện nghiệp vụ (một thông báo → nhiều người nhận, nhiều kênh)");
 
@@ -11715,12 +14694,37 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(22)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(23)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("Destination")
                         .IsRequired()
                         .HasColumnType("varchar(500)")
                         .HasColumnName("destination")
                         .HasColumnOrder(5)
                         .HasComment("Địa chỉ đích: email, SĐT, device token id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(21)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("LastError")
                         .HasColumnType("text")
@@ -11745,7 +14749,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("NotificationId")
                         .HasColumnType("uuid")
                         .HasColumnName("notification_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Thông báo gốc");
 
                     b.Property<string>("ProviderMessageId")
@@ -11783,14 +14787,32 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(19)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
                         .HasColumnOrder(3)
                         .HasComment("Người nhận (NULL nếu gửi tới email ngoài hệ thống)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("deliveries_pkey");
@@ -11800,7 +14822,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "NextAttemptAt" }, "ix_deliveries_queue")
                         .HasFilter("status IN ('PENDING','FAILED')");
 
-                    b.ToTable("deliveries", "notify", t =>
+                    b.ToTable("deliveries", null, t =>
                         {
                             t.HasComment("Hàng đợi/nhật ký gửi theo từng kênh (outbox): email, push, SMS... có retry");
 
@@ -11812,22 +14834,88 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Notify.NotificationDeliveryAttachment", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasColumnOrder(0)
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasComment("Khóa chính (UUID v7)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(4)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(5)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(9)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid>("DeliveryId")
                         .HasColumnType("uuid")
                         .HasColumnName("delivery_id")
-                        .HasColumnOrder(0)
+                        .HasColumnOrder(2)
                         .HasComment("Lượt gửi");
 
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid")
                         .HasColumnName("file_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(3)
                         .HasComment("File đính kèm");
 
-                    b.HasKey("DeliveryId", "FileId")
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(6)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(7)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("delivery_attachments_pkey");
 
-                    b.ToTable("delivery_attachments", "notify", t =>
+                    b.HasIndex(new[] { "DeliveryId", "FileId" }, "delivery_attachments_delivery_id_file_id_key")
+                        .IsUnique();
+
+                    b.ToTable("delivery_attachments", null, t =>
                         {
                             t.HasComment("File đính kèm email");
                         });
@@ -11846,106 +14934,131 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Mã sự kiện");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.PrimitiveCollection<List<string>>("DefaultChannels")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("default_channels")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("'{IN_APP}'")
                         .HasComment("Kênh mặc định: IN_APP, PUSH, EMAIL, SMS, ZALO");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Mô tả");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("true")
                         .HasComment("Còn dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsMandatory")
                         .HasColumnType("boolean")
                         .HasColumnName("is_mandatory")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("false")
                         .HasComment("Bắt buộc nhận, user không được tắt (VD: reset mật khẩu)");
 
                     b.Property<Guid>("ModuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("module_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phân hệ phát sinh");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Tên hiển thị trong cài đặt thông báo");
 
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("priority")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("'NORMAL'")
                         .HasComment("Mức ưu tiên");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
                     b.Property<string>("Variables")
                         .HasColumnType("jsonb")
                         .HasColumnName("variables")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Khai báo biến template, VD: [{\"name\":\"employee_name\",\"sample\":\"Nguyễn Văn A\"}]");
 
-                    b.HasKey("Id")
-                        .HasName("event_types_pkey");
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
-                    b.HasIndex(new[] { "Code" }, "event_types_code_key")
+                    b.HasKey("Id")
+                        .HasName("notify_event_types_pkey");
+
+                    b.HasIndex(new[] { "Code" }, "notify_event_types_code_key")
                         .IsUnique();
 
-                    b.ToTable("event_types", "notify", t =>
+                    b.ToTable("notify_event_types", null, t =>
                         {
                             t.HasComment("Loại sự kiện thông báo do các phân hệ khai báo (hrm.leave_request.submitted, wms.stock.low...)");
 
-                            t.HasCheckConstraint("event_types_priority_check", "priority IN ('LOW','NORMAL','HIGH','URGENT')");
+                            t.HasCheckConstraint("notify_event_types_priority_check", "priority IN ('LOW','NORMAL','HIGH','URGENT')");
                         });
                 });
 
@@ -12051,17 +15164,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("'vi-VN'")
                         .HasComment("Ngôn ngữ");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Subject")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("subject")
                         .HasColumnOrder(5)
                         .HasComment("Tiêu đề (email) / title (push, in-app)");
+
+                    b.Property<int>("TemplateVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("version")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("1")
+                        .HasComment("Phiên bản");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -12081,12 +15195,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(16)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
-                    b.Property<int>("Version")
-                        .HasColumnType("int")
-                        .HasColumnName("version")
-                        .HasColumnOrder(11)
-                        .HasDefaultValueSql("1")
-                        .HasComment("Phiên bản");
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("templates_pkey");
@@ -12097,7 +15210,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "EventTypeId", "Channel", "Locale" }, "uq_notify_templates"), false);
 
-                    b.ToTable("templates", "notify", t =>
+                    b.ToTable("templates", null, t =>
                         {
                             t.HasComment("Mẫu nội dung theo sự kiện × kênh × ngôn ngữ, dùng biến {{employee_name}}. Tenant có thể ghi đè mẫu hệ thống");
 
@@ -12161,12 +15274,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(6)
                         .HasComment("Service account JSON (FCM) hoặc .p8 key (APNs) đã mã hóa");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
                         .HasColumnOrder(10)
                         .HasDefaultValueSql("true")
                         .HasComment("Đang dùng");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsProduction")
                         .HasColumnType("boolean")
@@ -12188,12 +15320,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("Nhà cung cấp");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
@@ -12212,6 +15338,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("push_configs_pkey");
 
@@ -12220,7 +15352,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "AppCode", "Provider" }, "uq_push_configs"), false);
 
-                    b.ToTable("push_configs", "notify", t =>
+                    b.ToTable("push_configs", null, t =>
                         {
                             t.HasComment("Cấu hình nhà cung cấp push theo ứng dụng mobile (FCM, APNs)");
 
@@ -12256,6 +15388,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(18)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(22)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(23)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("FromEmail")
                         .IsRequired()
                         .HasColumnType("citext")
@@ -12288,6 +15432,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(14)
                         .HasDefaultValueSql("false")
                         .HasComment("Mặc định trong phạm vi");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(21)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -12328,12 +15479,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(12)
                         .HasComment("Reply-To");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("Security")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
@@ -12372,10 +15517,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(15)
                         .HasComment("Lần test gửi thành công");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("smtp_configs_pkey");
 
-                    b.ToTable("smtp_configs", "notify", t =>
+                    b.ToTable("smtp_configs", null, t =>
                         {
                             t.HasComment("Cấu hình SMTP theo hệ thống, tenant hoặc từng công ty");
 
@@ -12421,6 +15572,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm nhận");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(19)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("Icon")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("icon")
@@ -12433,6 +15602,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasDefaultValueSql("false")
                         .HasComment("Đã lưu trữ/ẩn");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(18)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsPinned")
                         .HasColumnType("boolean")
@@ -12457,7 +15633,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("NotificationId")
                         .HasColumnType("uuid")
                         .HasColumnName("notification_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Thông báo gốc");
 
                     b.Property<DateTimeOffset?>("ReadAt")
@@ -12469,7 +15645,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant (denormalize)");
 
                     b.Property<string>("Title")
@@ -12479,11 +15655,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(5)
                         .HasComment("Tiêu đề đã render");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
                         .HasColumnOrder(3)
                         .HasComment("Người nhận");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_notifications_pkey");
@@ -12495,7 +15689,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "UserId" }, "ix_user_notifications_unread")
                         .HasFilter("NOT is_read");
 
-                    b.ToTable("user_notifications", "notify", t =>
+                    b.ToTable("user_notifications", null, t =>
                         {
                             t.HasComment("Hộp thư thông báo in-app của từng user (thanh chuông). Đã render sẵn nội dung theo ngôn ngữ user");
 
@@ -12516,53 +15710,103 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("channel")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Kênh");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("DigestMode")
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("digest_mode")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasDefaultValueSql("'INSTANT'")
                         .HasComment("Gửi ngay hay gom tóm tắt");
 
                     b.Property<Guid?>("EventTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_type_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Sự kiện (NULL = áp dụng mọi sự kiện)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("is_enabled")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("true")
                         .HasComment("Bật/tắt");
 
                     b.Property<TimeOnly?>("QuietEnd")
                         .HasColumnType("time")
                         .HasColumnName("quiet_end")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Kết thúc giờ yên lặng");
 
                     b.Property<TimeOnly?>("QuietStart")
                         .HasColumnType("time")
                         .HasColumnName("quiet_start")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Bắt đầu giờ yên lặng (không push)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(11)
                         .HasComment("Cập nhật lúc");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("User");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("user_preferences_pkey");
@@ -12572,7 +15816,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "UserId", "EventTypeId", "Channel" }, "uq_user_notify_prefs"), false);
 
-                    b.ToTable("user_preferences", "notify", t =>
+                    b.ToTable("user_preferences", null, t =>
                         {
                             t.HasComment("Tùy chọn nhận thông báo của user theo sự kiện × kênh, giờ yên lặng");
 
@@ -12725,12 +15969,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(10)
                         .HasComment("Tỉnh/Thành phố");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
@@ -12776,6 +16014,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(27)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<Guid?>("WardId")
                         .HasColumnType("uuid")
                         .HasColumnName("ward_id")
@@ -12794,7 +16038,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "CompanyId" }, "ix_branches_company")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("branches", "org", t =>
+                    b.ToTable("branches", null, t =>
                         {
                             t.HasComment("Chi nhánh / cửa hàng / kho / văn phòng thuộc công ty");
 
@@ -12961,12 +16205,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(11)
                         .HasComment("Chức danh người đại diện");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("ShortName")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("short_name")
@@ -13012,6 +16250,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(30)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<Guid?>("WardId")
                         .HasColumnType("uuid")
                         .HasColumnName("ward_id")
@@ -13039,7 +16283,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex(new[] { "Path" }, "ix_companies_path"), new[] { "text_pattern_ops" });
 
-                    b.ToTable("companies", "org", t =>
+                    b.ToTable("companies", null, t =>
                         {
                             t.HasComment("Công ty con / pháp nhân thuộc tenant. Hỗ trợ công ty mẹ - con nhiều cấp qua parent_id");
 
@@ -13163,12 +16407,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("'/'")
                         .HasComment("Đường dẫn id '/root/child/' — truy vấn cây con bằng LIKE path || '%'");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
@@ -13202,6 +16440,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(18)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("departments_pkey");
 
@@ -13214,7 +16458,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex(new[] { "Path" }, "ix_departments_path"), new[] { "text_pattern_ops" });
 
-                    b.ToTable("departments", "org", t =>
+                    b.ToTable("departments", null, t =>
                         {
                             t.HasComment("Phòng ban / bộ phận / tổ nhóm dạng cây. Dùng cho Data Scope DEPARTMENT / DEPARTMENT_TREE");
 
@@ -13237,59 +16481,59 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("code")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Mã tenant duy nhất, dùng trong subdomain/đăng nhập (VD: remak)");
 
                     b.Property<string>("ConnectionInfo")
                         .HasColumnType("jsonb")
                         .HasColumnName("connection_info")
-                        .HasColumnOrder(22)
+                        .HasColumnOrder(23)
                         .HasComment("Thông tin kết nối DB riêng (đã mã hóa) khi isolation_mode = DATABASE");
 
                     b.Property<string>("ContactEmail")
                         .HasColumnType("citext")
                         .HasColumnName("contact_email")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Email liên hệ");
 
                     b.Property<string>("ContactName")
                         .HasColumnType("varchar(150)")
                         .HasColumnName("contact_name")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Người liên hệ chính");
 
                     b.Property<string>("ContactPhone")
                         .HasColumnType("varchar(20)")
                         .HasColumnName("contact_phone")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Số điện thoại liên hệ");
 
                     b.Property<string>("CountryCode")
                         .IsRequired()
                         .HasColumnType("char(2)")
                         .HasColumnName("country_code")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("'VN'")
                         .HasComment("Quốc gia hoạt động chính");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(24)
+                        .HasColumnOrder(25)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(25)
+                        .HasColumnOrder(26)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DefaultCurrencyCode")
                         .IsRequired()
                         .HasColumnType("char(3)")
                         .HasColumnName("default_currency_code")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("'VND'")
                         .HasComment("Tiền tệ hạch toán mặc định");
 
@@ -13297,32 +16541,32 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(10)")
                         .HasColumnName("default_locale")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasDefaultValueSql("'vi-VN'")
                         .HasComment("Ngôn ngữ mặc định");
 
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("deleted_at")
-                        .HasColumnOrder(29)
+                        .HasColumnOrder(30)
                         .HasComment("Thời điểm xóa mềm");
 
                     b.Property<Guid?>("DeletedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by")
-                        .HasColumnOrder(30)
+                        .HasColumnOrder(31)
                         .HasComment("Người xóa mềm (iam.users.id)");
 
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasComment("Hết hạn hợp đồng/thuê bao");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted")
-                        .HasColumnOrder(28)
+                        .HasColumnOrder(29)
                         .HasDefaultValueSql("false")
                         .HasComment("Cờ xóa mềm (true = đã xóa)");
 
@@ -13330,64 +16574,58 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("isolation_mode")
-                        .HasColumnOrder(21)
+                        .HasColumnOrder(22)
                         .HasDefaultValueSql("'SHARED'")
                         .HasComment("Mô hình cô lập dữ liệu ở các phân hệ: dùng chung DB, schema riêng, DB riêng");
 
                     b.Property<string>("LegalName")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("legal_name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Tên pháp lý đầy đủ");
 
                     b.Property<Guid?>("LogoFileId")
                         .HasColumnType("uuid")
                         .HasColumnName("logo_file_id")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Logo (storage.files)");
 
                     b.Property<long?>("MaxStorageMb")
                         .HasColumnType("bigint")
                         .HasColumnName("max_storage_mb")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasComment("Dung lượng lưu trữ tối đa (MB)");
 
                     b.Property<int?>("MaxUsers")
                         .HasColumnType("int")
                         .HasColumnName("max_users")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasComment("Số user tối đa theo gói; NULL = không giới hạn");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên hiển thị");
 
                     b.Property<string>("PlanCode")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("plan_code")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasComment("Gói dịch vụ (BASIC, PRO, ENTERPRISE)");
 
                     b.Property<string>("PrimaryDomain")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("primary_domain")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Domain chính (erp.congty.vn)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Settings")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("settings")
-                        .HasColumnOrder(23)
+                        .HasColumnOrder(24)
                         .HasDefaultValueSql("'{}'")
                         .HasComment("Thiết lập mở rộng (theme, màu thương hiệu...)");
 
@@ -13395,52 +16633,64 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("status")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasDefaultValueSql("'ACTIVE'")
                         .HasComment("Trạng thái tenant");
 
                     b.Property<string>("Subdomain")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("subdomain")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Subdomain trên nền tảng (remak.baseerp.vn)");
 
                     b.Property<string>("TaxCode")
                         .HasColumnType("varchar(20)")
                         .HasColumnName("tax_code")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Mã số thuế của tập đoàn/công ty mẹ");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("Timezone")
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("timezone")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("'Asia/Ho_Chi_Minh'")
                         .HasComment("Múi giờ mặc định (IANA)");
 
                     b.Property<DateTimeOffset?>("TrialEndsAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("trial_ends_at")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasComment("Hết hạn dùng thử");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(26)
+                        .HasColumnOrder(27)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(27)
+                        .HasColumnOrder(28)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("tenants_pkey");
 
-                    b.ToTable("tenants", "org", t =>
+                    b.ToTable("tenants", null, t =>
                         {
                             t.HasComment("Tenant = Tập đoàn/khách hàng thuê hệ thống. Mọi dữ liệu nghiệp vụ đều gắn tenant_id để cô lập dữ liệu");
 
@@ -13459,13 +16709,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("gen_random_uuid()")
                         .HasComment("Khóa chính");
 
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("occurred_at")
-                        .HasColumnOrder(8)
-                        .HasDefaultValueSql("now()")
-                        .HasComment("Thời điểm");
-
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
@@ -13473,10 +16716,35 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(5)
                         .HasComment("Hành động");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(9)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid")
                         .HasColumnName("file_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("File");
 
                     b.Property<IPAddress>("IpAddress")
@@ -13484,6 +16752,20 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("ip_address")
                         .HasColumnOrder(6)
                         .HasComment("IP");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("occurred_at")
+                        .HasColumnOrder(8)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm");
 
                     b.Property<Guid?>("ShareLinkId")
                         .HasColumnType("uuid")
@@ -13494,8 +16776,20 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(1)
                         .HasComment("Tenant");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
@@ -13509,13 +16803,23 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(3)
                         .HasComment("Người truy cập (NULL nếu qua share link)");
 
-                    b.HasKey("Id", "OccurredAt")
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
                         .HasName("file_access_logs_pkey");
 
-                    b.ToTable("file_access_logs", "storage", t =>
-                        {
-                            t.ExcludeFromMigrations();
+                    b.HasIndex(new[] { "Id", "OccurredAt" }, "file_access_logs_id_occurred_at_key")
+                        .IsUnique();
 
+                    b.HasIndex(new[] { "FileId", "OccurredAt" }, "ix_file_access_logs_file")
+                        .IsDescending(false, true);
+
+                    b.ToTable("file_access_logs", null, t =>
+                        {
                             t.HasComment("Nhật ký truy cập file nhạy cảm (xem, tải, cấp presigned URL) phục vụ kiểm toán");
 
                             t.HasCheckConstraint("file_access_logs_action_check", "action IN ('VIEW','DOWNLOAD','PRESIGN','DELETE','SHARE')");
@@ -13534,7 +16838,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.PrimitiveCollection<List<string>>("AllowedEmails")
                         .HasColumnType("citext[]")
                         .HasColumnName("allowed_emails")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Chỉ cho phép email này (tùy chọn)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -13547,52 +16851,95 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(11)
                         .HasComment("Người tạo link");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<int>("DownloadCount")
                         .HasColumnType("int")
                         .HasColumnName("download_count")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("0")
                         .HasComment("Đã tải");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Hết hạn");
 
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid")
                         .HasColumnName("file_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("File");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<int?>("MaxDownloads")
                         .HasColumnType("int")
                         .HasColumnName("max_downloads")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Số lượt tải tối đa");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("password_hash")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Mật khẩu mở link (tùy chọn)");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("revoked_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Thu hồi lúc");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("varchar(128)")
                         .HasColumnName("token_hash")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Hash token trong URL chia sẻ");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(12)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(13)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("file_share_links_pkey");
@@ -13600,7 +16947,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "TokenHash" }, "file_share_links_token_hash_key")
                         .IsUnique();
 
-                    b.ToTable("file_share_links", "storage", t =>
+                    b.ToTable("file_share_links", null, t =>
                         {
                             t.HasComment("Link chia sẻ file có kiểm soát (hết hạn, giới hạn lượt tải, mật khẩu) — khác presigned URL ngắn hạn của S3");
                         });
@@ -13618,53 +16965,102 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(10)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid")
                         .HasColumnName("file_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("File gốc");
 
                     b.Property<int?>("Height")
                         .HasColumnType("int")
                         .HasColumnName("height")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Cao (px)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("MimeType")
                         .IsRequired()
                         .HasColumnType("varchar(150)")
                         .HasColumnName("mime_type")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("MIME type");
 
                     b.Property<string>("ObjectKey")
                         .IsRequired()
                         .HasColumnType("varchar(1000)")
                         .HasColumnName("object_key")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Object key biến thể");
 
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("size_bytes")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Dung lượng");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(11)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
 
                     b.Property<string>("VariantName")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("variant_name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên biến thể (THUMB, SMALL, MEDIUM, LARGE)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int?>("Width")
                         .HasColumnType("int")
                         .HasColumnName("width")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Rộng (px)");
 
                     b.HasKey("Id")
@@ -13673,7 +17069,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "FileId", "VariantName" }, "uq_file_variants")
                         .IsUnique();
 
-                    b.ToTable("file_variants", "storage", t =>
+                    b.ToTable("file_variants", null, t =>
                         {
                             t.HasComment("Biến thể của file ảnh sau xử lý (thumbnail, small, medium, webp)");
                         });
@@ -13691,28 +17087,47 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Encryption")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("encryption")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("'SSE'")
                         .HasComment("Mã hóa phía server");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("false")
                         .HasComment("Cho phép đọc công khai");
 
@@ -13720,49 +17135,55 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(100)")
                         .HasColumnName("name")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Tên bucket thật trên storage");
 
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("uuid")
                         .HasColumnName("provider_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Provider");
 
                     b.Property<string>("Purpose")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("purpose")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Mục đích sử dụng");
 
                     b.Property<int?>("RetentionDays")
                         .HasColumnType("int")
                         .HasColumnName("retention_days")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Tự xóa file sau N ngày (lifecycle)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<bool>("Versioning")
                         .HasColumnType("boolean")
                         .HasColumnName("versioning")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasDefaultValueSql("false")
                         .HasComment("Bật versioning trên storage");
 
@@ -13772,7 +17193,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ProviderId", "Name" }, "uq_buckets")
                         .IsUnique();
 
-                    b.ToTable("buckets", "storage", t =>
+                    b.ToTable("buckets", null, t =>
                         {
                             t.HasComment("Bucket lưu trữ theo mục đích (public-assets, private-docs, hr-sensitive...)");
 
@@ -13930,12 +17351,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(22)
                         .HasComment("Phiên bản trước");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<string>("ScanStatus")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
@@ -14004,6 +17419,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(25)
                         .HasComment("IP upload");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<int>("VersionNo")
                         .HasColumnType("int")
                         .HasColumnName("version_no")
@@ -14034,7 +17455,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "BucketId", "ObjectKey" }, "uq_files_object")
                         .IsUnique();
 
-                    b.ToTable("files", "storage", t =>
+                    b.ToTable("files", null, t =>
                         {
                             t.HasComment("Metadata file đã upload. File vật lý nằm trên Object Storage; mọi phân hệ chỉ lưu file_id");
 
@@ -14085,6 +17506,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(13)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("Endpoint")
                         .HasColumnType("varchar(500)")
                         .HasColumnName("endpoint")
@@ -14105,6 +17538,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("false")
                         .HasComment("Provider mặc định");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(16)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<string>("ProviderType")
                         .IsRequired()
                         .HasColumnType("varchar(20)")
@@ -14123,12 +17563,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("region")
                         .HasColumnOrder(6)
                         .HasComment("Region");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("SecretKeyEncrypted")
                         .HasColumnType("text")
@@ -14161,19 +17595,25 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("true")
                         .HasComment("Path-style URL (MinIO cần true)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
-                        .HasName("providers_pkey");
+                        .HasName("storage_providers_pkey");
 
                     b.HasIndex(new[] { "TenantId", "Code" }, "uq_storage_providers_code")
                         .IsUnique();
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Code" }, "uq_storage_providers_code"), false);
 
-                    b.ToTable("providers", "storage", t =>
+                    b.ToTable("storage_providers", null, t =>
                         {
                             t.HasComment("Cấu hình nhà cung cấp Object Storage (MinIO, S3, R2...). Hỗ trợ tenant dùng storage riêng");
 
-                            t.HasCheckConstraint("providers_provider_type_check", "provider_type IN ('MINIO','S3','R2','GCS','AZURE_BLOB','LOCAL')");
+                            t.HasCheckConstraint("storage_providers_provider_type_check", "provider_type IN ('MINIO','S3','R2','GCS','AZURE_BLOB','LOCAL')");
                         });
                 });
 
@@ -14237,12 +17677,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(21)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(25)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(26)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<short?>("ImageQuality")
                         .HasColumnType("smallint")
                         .HasColumnName("image_quality")
                         .HasColumnOrder(14)
                         .HasDefaultValueSql("80")
                         .HasComment("Chất lượng nén ảnh");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(24)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<int?>("MaxHeight")
                         .HasColumnType("int")
@@ -14283,12 +17742,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(10)
                         .HasDefaultValueSql("300")
                         .HasComment("Thời hạn link tạm (giây)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Sensitivity")
                         .IsRequired()
@@ -14336,6 +17789,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(16)
                         .HasComment("Biến thể cần sinh, VD: [{\"name\":\"THUMB\",\"w\":150,\"h\":150,\"fit\":\"cover\"}]");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<bool>("VirusScan")
                         .HasColumnType("boolean")
                         .HasColumnName("virus_scan")
@@ -14351,7 +17810,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "TenantId", "Category" }, "uq_upload_policies"), false);
 
-                    b.ToTable("upload_policies", "storage", t =>
+                    b.ToTable("upload_policies", null, t =>
                         {
                             t.HasComment("Chính sách upload theo loại file: dung lượng, định dạng, nén/resize ảnh, bucket đích, mức nhạy cảm");
 
@@ -14376,94 +17835,143 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(20)")
                         .HasColumnName("action")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Hành động");
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Người thao tác (NULL = hệ thống)");
 
                     b.PrimitiveCollection<List<Guid>>("Attachments")
                         .HasColumnType("uuid[]")
                         .HasColumnName("attachments")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("File đính kèm (storage.files)");
 
                     b.Property<string>("Comment")
                         .HasColumnType("text")
                         .HasColumnName("comment")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Ý kiến");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
 
                     b.Property<string>("DataChanges")
                         .HasColumnType("jsonb")
                         .HasColumnName("data_changes")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Dữ liệu chứng từ được người duyệt sửa");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(20)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(21)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("FromStepName")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("from_step_name")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Bước trước");
 
                     b.Property<Guid>("InstanceId")
                         .HasColumnType("uuid")
                         .HasColumnName("instance_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Instance");
 
                     b.Property<Guid?>("InstanceStepId")
                         .HasColumnType("uuid")
                         .HasColumnName("instance_step_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Lượt bước");
 
                     b.Property<IPAddress>("IpAddress")
                         .HasColumnType("inet")
                         .HasColumnName("ip_address")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("IP");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(19)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<Guid?>("OnBehalfOfId")
                         .HasColumnType("uuid")
                         .HasColumnName("on_behalf_of_id")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Thao tác thay cho ai (ủy quyền)");
 
                     b.Property<Guid?>("TargetUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_user_id")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Người nhận (khi chuyển/ủy quyền/xin ý kiến)");
 
                     b.Property<Guid?>("TaskId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Nhiệm vụ liên quan");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("ToStepName")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("to_step_name")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Bước sau");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(17)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(18)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("action_logs_pkey");
 
                     b.HasIndex(new[] { "InstanceId", "CreatedAt" }, "ix_wf_action_logs_instance");
 
-                    b.ToTable("action_logs", "workflow", t =>
+                    b.ToTable("action_logs", null, t =>
                         {
                             t.HasComment("Lịch sử thao tác trên instance (timeline duyệt)");
 
@@ -14604,12 +18112,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("0")
                         .HasComment("Ưu tiên khi nhiều quy trình cùng khớp (số lớn ưu tiên)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<bool>("SkipDuplicateApprover")
                         .HasColumnType("boolean")
                         .HasColumnName("skip_duplicate_approver")
@@ -14635,13 +18137,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(20)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
-                        .HasName("definitions_pkey");
+                        .HasName("workflow_definitions_pkey");
 
                     b.HasIndex(new[] { "TenantId", "DocumentTypeCode" }, "ix_wf_definitions_doc")
                         .HasFilter("is_active AND NOT is_deleted");
 
-                    b.ToTable("definitions", "workflow", t =>
+                    b.ToTable("workflow_definitions", null, t =>
                         {
                             t.HasComment("Định nghĩa quy trình duyệt cho một loại chứng từ (đơn nghỉ phép, đề xuất mua hàng, chiết khấu vượt khung...)");
                         });
@@ -14659,76 +18167,101 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("ChangeNote")
                         .HasColumnType("text")
                         .HasColumnName("change_note")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Ghi chú thay đổi");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
 
                     b.Property<Guid>("DefinitionId")
                         .HasColumnType("uuid")
                         .HasColumnName("definition_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Quy trình");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(14)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(15)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("DesignerJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("designer_json")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Dữ liệu sơ đồ trên designer (vị trí node, cạnh) để vẽ lại UI");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(13)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("published_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Phát hành lúc");
 
                     b.Property<Guid?>("PublishedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("published_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Người phát hành");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("status")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("'DRAFT'")
                         .HasComment("Nháp, đã phát hành, lưu trữ");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("VersionNo")
                         .HasColumnType("int")
                         .HasColumnName("version_no")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Số phiên bản");
 
                     b.HasKey("Id")
@@ -14737,7 +18270,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "DefinitionId", "VersionNo" }, "uq_wf_versions")
                         .IsUnique();
 
-                    b.ToTable("definition_versions", "workflow", t =>
+                    b.ToTable("definition_versions", null, t =>
                         {
                             t.HasComment("Phiên bản quy trình. Instance đang chạy giữ nguyên phiên bản cũ khi admin sửa quy trình");
 
@@ -14785,6 +18318,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(2)
                         .HasComment("Người ủy quyền");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<string>("DocumentTypeCode")
                         .HasColumnType("varchar(50)")
                         .HasColumnName("document_type_code")
@@ -14803,6 +18348,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(12)
                         .HasDefaultValueSql("true")
                         .HasComment("Chuyển cả các task đang chờ cho người được ủy quyền");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(20)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<decimal?>("MaxAmount")
                         .HasColumnType("numeric(20,2)")
@@ -14834,12 +18386,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("revoked_at")
                         .HasColumnOrder(15)
                         .HasComment("Thu hồi lúc");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Scope")
                         .IsRequired()
@@ -14881,13 +18427,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(19)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("delegations_pkey");
 
                     b.HasIndex(new[] { "DelegatorId", "StartAt", "EndAt" }, "ix_wf_delegations_active")
                         .HasFilter("status = 'ACTIVE'");
 
-                    b.ToTable("delegations", "workflow", t =>
+                    b.ToTable("delegations", null, t =>
                         {
                             t.HasComment("Ủy quyền duyệt khi vắng mặt (đi công tác, nghỉ phép)");
 
@@ -14959,6 +18511,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(2)
                         .HasComment("Quy trình");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(30)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(31)
+                        .HasComment("Người xóa mềm (users.id)");
+
                     b.Property<Guid?>("DepartmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("department_id")
@@ -15002,6 +18566,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(23)
                         .HasComment("Ý kiến cuối cùng");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(29)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
+
                     b.Property<string>("ModuleCode")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
@@ -15028,12 +18599,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("requester_id")
                         .HasColumnOrder(12)
                         .HasComment("Người gửi duyệt");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -15089,6 +18654,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("'{}'")
                         .HasComment("Ảnh chụp biến dùng rẽ nhánh lúc gửi duyệt (amount, leave_days...)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<Guid>("VersionId")
                         .HasColumnType("uuid")
                         .HasColumnName("version_id")
@@ -15110,7 +18681,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("status = 'PENDING'");
 
-                    b.ToTable("instances", "workflow", t =>
+                    b.ToTable("instances", null, t =>
                         {
                             t.HasComment("Một lượt chạy quy trình cho một chứng từ cụ thể");
 
@@ -15132,44 +18703,76 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("completed_at")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasComment("Hoàn thành");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at")
+                        .HasColumnOrder(11)
+                        .HasDefaultValueSql("now()")
+                        .HasComment("Thời điểm tạo bản ghi");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(12)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateTimeOffset?>("DueAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("due_at")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Hạn xử lý (đã tính theo lịch làm việc)");
 
                     b.Property<DateTimeOffset?>("EscalatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("escalated_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Đã leo thang lúc");
 
                     b.Property<Guid>("InstanceId")
                         .HasColumnType("uuid")
                         .HasColumnName("instance_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Instance");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<short>("Iteration")
                         .HasColumnType("smallint")
                         .HasColumnName("iteration")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasDefaultValueSql("1")
                         .HasComment("Lần chạy thứ mấy của bước (tăng khi bị trả lại)");
 
                     b.Property<string>("Outcome")
                         .HasColumnType("varchar(15)")
                         .HasColumnName("outcome")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Kết quả để chọn transition");
 
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("started_at")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasDefaultValueSql("now()")
                         .HasComment("Bắt đầu");
 
@@ -15177,15 +18780,39 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("status")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'IN_PROGRESS'")
                         .HasComment("Trạng thái bước");
 
                     b.Property<Guid>("StepId")
                         .HasColumnType("uuid")
                         .HasColumnName("step_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Bước định nghĩa");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(13)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(14)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("instance_steps_pkey");
@@ -15195,7 +18822,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     b.HasIndex(new[] { "InstanceId" }, "ix_wf_instance_steps_instance");
 
-                    b.ToTable("instance_steps", "workflow", t =>
+                    b.ToTable("instance_steps", null, t =>
                         {
                             t.HasComment("Lượt thực thi của từng bước trong instance (một bước có thể lặp lại khi bị trả về)");
 
@@ -15215,79 +18842,98 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<bool>("AllowAddApprover")
                         .HasColumnType("boolean")
                         .HasColumnName("allow_add_approver")
-                        .HasColumnOrder(18)
+                        .HasColumnOrder(19)
                         .HasDefaultValueSql("false")
                         .HasComment("Cho phép xin ý kiến thêm người");
 
                     b.Property<bool>("AllowDelegate")
                         .HasColumnType("boolean")
                         .HasColumnName("allow_delegate")
-                        .HasColumnOrder(17)
+                        .HasColumnOrder(18)
                         .HasDefaultValueSql("true")
                         .HasComment("Cho phép chuyển/ủy quyền");
 
                     b.Property<bool>("AllowReject")
                         .HasColumnType("boolean")
                         .HasColumnName("allow_reject")
-                        .HasColumnOrder(15)
+                        .HasColumnOrder(16)
                         .HasDefaultValueSql("true")
                         .HasComment("Cho phép từ chối");
 
                     b.Property<bool>("AllowReturn")
                         .HasColumnType("boolean")
                         .HasColumnName("allow_return")
-                        .HasColumnOrder(16)
+                        .HasColumnOrder(17)
                         .HasDefaultValueSql("true")
                         .HasComment("Cho phép trả lại bước trước/người tạo");
 
                     b.Property<string>("ApprovalMode")
                         .HasColumnType("varchar(15)")
                         .HasColumnName("approval_mode")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Cách duyệt khi nhiều người: 1 người bất kỳ, tất cả, lần lượt, đủ tỷ lệ");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("varchar(50)")
                         .HasColumnName("code")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Mã bước (trong phiên bản)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(24)
+                        .HasColumnOrder(25)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(25)
+                        .HasColumnOrder(26)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(30)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(31)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.PrimitiveCollection<List<string>>("EditableFields")
                         .HasColumnType("text[]")
                         .HasColumnName("editable_fields")
-                        .HasColumnOrder(21)
+                        .HasColumnOrder(22)
                         .HasComment("Trường chứng từ người duyệt bước này được sửa");
 
                     b.Property<Guid?>("EscalateToRef")
                         .HasColumnType("uuid")
                         .HasColumnName("escalate_to_ref")
-                        .HasColumnOrder(14)
+                        .HasColumnOrder(15)
                         .HasComment("Id người/vai trò nhận leo thang");
 
                     b.Property<string>("EscalateToType")
                         .HasColumnType("varchar(30)")
                         .HasColumnName("escalate_to_type")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Loại người nhận khi leo thang (giống approver_type)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(29)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<short?>("MaxReminders")
                         .HasColumnType("smallint")
                         .HasColumnName("max_reminders")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasDefaultValueSql("3")
                         .HasComment("Số lần nhắc tối đa");
 
@@ -15295,70 +18941,64 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Tên bước (Trưởng bộ phận duyệt)");
 
                     b.Property<string>("OnEnterActions")
                         .HasColumnType("jsonb")
                         .HasColumnName("on_enter_actions")
-                        .HasColumnOrder(22)
+                        .HasColumnOrder(23)
                         .HasComment("Hành động hệ thống khi vào bước (gọi webhook, phát event)");
 
                     b.Property<short?>("QuorumPercent")
                         .HasColumnType("smallint")
                         .HasColumnName("quorum_percent")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Tỷ lệ % cần đồng ý (QUORUM)");
 
                     b.Property<decimal?>("RemindBeforeHours")
                         .HasColumnType("numeric(8,2)")
                         .HasColumnName("remind_before_hours")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasComment("Nhắc trước hạn N giờ");
 
                     b.Property<decimal?>("RemindIntervalHours")
                         .HasColumnType("numeric(8,2)")
                         .HasColumnName("remind_interval_hours")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Nhắc lặp lại mỗi N giờ khi quá hạn");
 
                     b.Property<bool>("RequireCommentOnReject")
                         .HasColumnType("boolean")
                         .HasColumnName("require_comment_on_reject")
-                        .HasColumnOrder(19)
+                        .HasColumnOrder(20)
                         .HasDefaultValueSql("true")
                         .HasComment("Bắt buộc ghi lý do khi từ chối");
 
                     b.Property<bool>("RequireSignature")
                         .HasColumnType("boolean")
                         .HasColumnName("require_signature")
-                        .HasColumnOrder(20)
+                        .HasColumnOrder(21)
                         .HasDefaultValueSql("false")
                         .HasComment("Yêu cầu chữ ký (ảnh/số)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<decimal?>("SlaHours")
                         .HasColumnType("numeric(8,2)")
                         .HasColumnName("sla_hours")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Hạn xử lý (giờ)");
 
                     b.Property<bool>("SlaUseWorkingCalendar")
                         .HasColumnType("boolean")
                         .HasColumnName("sla_use_working_calendar")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("true")
                         .HasComment("Tính hạn theo giờ làm việc (mdm.work_calendars), bỏ qua lễ/CN");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(23)
+                        .HasColumnOrder(24)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự hiển thị");
 
@@ -15366,33 +19006,45 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("step_type")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Loại node");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<string>("TimeoutAction")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("timeout_action")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasDefaultValueSql("'REMIND'")
                         .HasComment("Hành động khi quá hạn");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(26)
+                        .HasColumnOrder(27)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(27)
+                        .HasColumnOrder(28)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<Guid>("VersionId")
                         .HasColumnType("uuid")
                         .HasColumnName("version_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phiên bản");
 
                     b.HasKey("Id")
@@ -15401,7 +19053,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "VersionId", "Code" }, "uq_wf_steps")
                         .IsUnique();
 
-                    b.ToTable("steps", "workflow", t =>
+                    b.ToTable("steps", null, t =>
                         {
                             t.HasComment("Bước (node) trong quy trình: bắt đầu, duyệt, điều kiện, song song, thông báo, kết thúc");
 
@@ -15427,88 +19079,113 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ApproverRefId")
                         .HasColumnType("uuid")
                         .HasColumnName("approver_ref_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Id user / role / phòng ban tương ứng");
 
                     b.Property<string>("ApproverType")
                         .IsRequired()
                         .HasColumnType("varchar(30)")
                         .HasColumnName("approver_type")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Cách xác định người duyệt");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(15)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(16)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<string>("Expression")
                         .HasColumnType("text")
                         .HasColumnName("expression")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Biểu thức tùy biến (EXPRESSION)");
 
                     b.Property<string>("FieldName")
                         .HasColumnType("varchar(100)")
                         .HasColumnName("field_name")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Lấy người duyệt từ trường của chứng từ (FIELD_VALUE)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(14)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<short?>("ManagerLevel")
                         .HasColumnType("smallint")
                         .HasColumnName("manager_level")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasComment("Cấp quản lý thứ N (MANAGER_LEVEL)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("ScopeBy")
                         .HasColumnType("varchar(20)")
                         .HasColumnName("scope_by")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("ROLE: lọc người có vai trò trong đơn vị của người tạo hay của chứng từ");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự khi duyệt SEQUENTIAL");
 
                     b.Property<Guid>("StepId")
                         .HasColumnType("uuid")
                         .HasColumnName("step_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Bước");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("step_approvers_pkey");
 
-                    b.ToTable("step_approvers", "workflow", t =>
+                    b.ToTable("step_approvers", null, t =>
                         {
                             t.HasComment("Người duyệt của một bước: chỉ định cụ thể, theo vai trò, quản lý trực tiếp, trưởng phòng, cấp quản lý thứ N...");
 
@@ -15564,11 +19241,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("now()")
                         .HasComment("Giao lúc");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by")
+                        .HasColumnOrder(20)
+                        .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+
                     b.Property<Guid?>("DelegationId")
                         .HasColumnType("uuid")
                         .HasColumnName("delegation_id")
                         .HasColumnOrder(6)
                         .HasComment("Ủy quyền đã áp dụng (workflow.delegations)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(24)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(25)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<DateTimeOffset?>("DueAt")
                         .HasColumnType("timestamptz")
@@ -15587,6 +19282,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnName("instance_step_id")
                         .HasColumnOrder(3)
                         .HasComment("Lượt bước");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(23)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<DateTimeOffset?>("LastRemindedAt")
                         .HasColumnType("timestamptz")
@@ -15648,6 +19350,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasColumnOrder(1)
                         .HasComment("Tenant");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at")
+                        .HasColumnOrder(21)
+                        .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by")
+                        .HasColumnOrder(22)
+                        .HasComment("Người cập nhật gần nhất (users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("tasks_pkey");
 
@@ -15660,7 +19380,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     b.HasIndex(new[] { "InstanceId" }, "ix_wf_tasks_instance");
 
-                    b.ToTable("tasks", "workflow", t =>
+                    b.ToTable("tasks", null, t =>
                         {
                             t.HasComment("Nhiệm vụ duyệt giao cho từng người (danh sách \"Việc chờ tôi duyệt\")");
 
@@ -15684,90 +19404,115 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.Property<string>("ConditionExpr")
                         .HasColumnType("text")
                         .HasColumnName("condition_expr")
-                        .HasColumnOrder(7)
+                        .HasColumnOrder(8)
                         .HasComment("Điều kiện dạng biểu thức (thay thế condition_json), VD: amount >= 10000000 && amount < 50000000");
 
                     b.Property<string>("ConditionJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("condition_json")
-                        .HasColumnOrder(6)
+                        .HasColumnOrder(7)
                         .HasComment("Điều kiện dạng cây JSON, VD: {\"all\":[{\"field\":\"amount\",\"op\":\"lt\",\"value\":10000000}]}");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at")
-                        .HasColumnOrder(10)
+                        .HasColumnOrder(11)
                         .HasDefaultValueSql("now()")
                         .HasComment("Thời điểm tạo bản ghi");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by")
-                        .HasColumnOrder(11)
+                        .HasColumnOrder(12)
                         .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at")
+                        .HasColumnOrder(16)
+                        .HasComment("Thời điểm xóa mềm");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by")
+                        .HasColumnOrder(17)
+                        .HasComment("Người xóa mềm (users.id)");
 
                     b.Property<Guid>("FromStepId")
                         .HasColumnType("uuid")
                         .HasColumnName("from_step_id")
-                        .HasColumnOrder(2)
+                        .HasColumnOrder(3)
                         .HasComment("Bước nguồn");
 
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean")
                         .HasColumnName("is_default")
-                        .HasColumnOrder(9)
+                        .HasColumnOrder(10)
                         .HasDefaultValueSql("false")
                         .HasComment("Nhánh mặc định khi không điều kiện nào khớp");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted")
+                        .HasColumnOrder(15)
+                        .HasDefaultValueSql("false")
+                        .HasComment("Cờ xóa mềm (true = đã xóa)");
 
                     b.Property<string>("Name")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name")
-                        .HasColumnOrder(5)
+                        .HasColumnOrder(6)
                         .HasComment("Nhãn cạnh (Dưới 10 triệu)");
 
                     b.Property<int>("Priority")
                         .HasColumnType("int")
                         .HasColumnName("priority")
-                        .HasColumnOrder(8)
+                        .HasColumnOrder(9)
                         .HasDefaultValueSql("0")
                         .HasComment("Thứ tự xét điều kiện (nhỏ xét trước)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasColumnOrder(1)
+                        .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
 
                     b.Property<Guid>("ToStepId")
                         .HasColumnType("uuid")
                         .HasColumnName("to_step_id")
-                        .HasColumnOrder(3)
+                        .HasColumnOrder(4)
                         .HasComment("Bước đích");
 
                     b.Property<string>("TriggerOutcome")
                         .IsRequired()
                         .HasColumnType("varchar(15)")
                         .HasColumnName("trigger_outcome")
-                        .HasColumnOrder(4)
+                        .HasColumnOrder(5)
                         .HasDefaultValueSql("'APPROVED'")
                         .HasComment("Kết quả bước nguồn kích hoạt cạnh này");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at")
-                        .HasColumnOrder(12)
+                        .HasColumnOrder(13)
                         .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by")
-                        .HasColumnOrder(13)
+                        .HasColumnOrder(14)
                         .HasComment("Người cập nhật gần nhất (iam.users.id)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<Guid>("VersionId")
                         .HasColumnType("uuid")
                         .HasColumnName("version_id")
-                        .HasColumnOrder(1)
+                        .HasColumnOrder(2)
                         .HasComment("Phiên bản");
 
                     b.HasKey("Id")
@@ -15775,7 +19520,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     b.HasIndex(new[] { "FromStepId", "Priority" }, "ix_wf_transitions_from");
 
-                    b.ToTable("transitions", "workflow", t =>
+                    b.ToTable("transitions", null, t =>
                         {
                             t.HasComment("Cạnh nối giữa các bước kèm điều kiện rẽ nhánh (VD: amount < 10000000 → Trưởng BP; >= 50000000 → Giám đốc)");
 
@@ -16127,6 +19872,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Config.FeatureFlag", "Flag")
                         .WithMany("FeatureFlagRules")
                         .HasForeignKey("FlagKey")
+                        .HasPrincipalKey("Key")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("feature_flag_rules_flag_key_fkey");
@@ -16150,6 +19896,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Config.SettingDefinition", "Setting")
                         .WithMany("SettingValues")
                         .HasForeignKey("SettingKey")
+                        .HasPrincipalKey("Key")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("setting_values_setting_key_fkey");
@@ -16169,6 +19916,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Config.Language", "Language")
                         .WithMany()
                         .HasForeignKey("LanguageCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("translations_language_code_fkey");
@@ -16354,6 +20102,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Iam.PermissionAction", "Action")
                         .WithMany()
                         .HasForeignKey("ActionCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("permissions_action_code_fkey");
@@ -16787,6 +20536,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Integration.IntegrationEventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("event_subscriptions_event_type_code_fkey");
@@ -16852,7 +20602,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
-                        .HasConstraintName("event_types_module_id_fkey");
+                        .HasConstraintName("integration_event_types_module_id_fkey");
 
                     b.Navigation("Module");
                 });
@@ -16887,7 +20637,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.NoAction)
-                        .HasConstraintName("definitions_module_id_fkey");
+                        .HasConstraintName("job_definitions_module_id_fkey");
 
                     b.Navigation("Module");
                 });
@@ -16930,6 +20680,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Country", "Country")
                         .WithMany()
                         .HasForeignKey("CountryCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("administrative_units_country_code_fkey");
@@ -16971,6 +20722,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Country", "Country")
                         .WithMany()
                         .HasForeignKey("CountryCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("banks_country_code_fkey");
@@ -16995,6 +20747,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Currency", "FromCurrencyNavigation")
                         .WithMany()
                         .HasForeignKey("FromCurrency")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("exchange_rates_from_currency_fkey");
@@ -17008,6 +20761,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Currency", "ToCurrencyNavigation")
                         .WithMany()
                         .HasForeignKey("ToCurrency")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("exchange_rates_to_currency_fkey");
@@ -17024,6 +20778,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Country", "Country")
                         .WithMany()
                         .HasForeignKey("CountryCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("holidays_country_code_fkey");
@@ -17068,6 +20823,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.DocumentType", "DocumentType")
                         .WithMany()
                         .HasForeignKey("DocumentTypeCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("numbering_rules_document_type_code_fkey");
@@ -17093,6 +20849,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.TaxType", "TaxType")
                         .WithMany()
                         .HasForeignKey("TaxTypeCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("tax_rates_tax_type_code_fkey");
@@ -17327,7 +21084,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
-                        .HasConstraintName("event_types_module_id_fkey");
+                        .HasConstraintName("notify_event_types_module_id_fkey");
 
                     b.Navigation("Module");
                 });
@@ -17435,6 +21192,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Country", "Country")
                         .WithMany()
                         .HasForeignKey("CountryCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("branches_country_code_fkey");
@@ -17498,6 +21256,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Currency", "BaseCurrency")
                         .WithMany()
                         .HasForeignKey("BaseCurrencyCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("companies_base_currency_code_fkey");
@@ -17505,6 +21264,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Country", "Country")
                         .WithMany()
                         .HasForeignKey("CountryCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("companies_country_code_fkey");
@@ -17621,6 +21381,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Country", "Country")
                         .WithMany()
                         .HasForeignKey("CountryCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("tenants_country_code_fkey");
@@ -17628,6 +21389,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.Currency", "DefaultCurrency")
                         .WithMany()
                         .HasForeignKey("DefaultCurrencyCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("tenants_default_currency_code_fkey");
@@ -17715,7 +21477,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
-                        .HasConstraintName("providers_tenant_id_fkey");
+                        .HasConstraintName("storage_providers_tenant_id_fkey");
 
                     b.Navigation("Tenant");
                 });
@@ -17782,13 +21544,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.NoAction)
-                        .HasConstraintName("definitions_branch_id_fkey");
+                        .HasConstraintName("workflow_definitions_branch_id_fkey");
 
                     b.HasOne("CorePlatformApi.Domain.Entities.Org.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.NoAction)
-                        .HasConstraintName("definitions_company_id_fkey");
+                        .HasConstraintName("workflow_definitions_company_id_fkey");
 
                     b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "CurrentVersion")
                         .WithMany()
@@ -17800,21 +21562,22 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.NoAction)
-                        .HasConstraintName("definitions_department_id_fkey");
+                        .HasConstraintName("workflow_definitions_department_id_fkey");
 
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.DocumentType", "DocumentType")
                         .WithMany()
                         .HasForeignKey("DocumentTypeCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
-                        .HasConstraintName("definitions_document_type_code_fkey");
+                        .HasConstraintName("workflow_definitions_document_type_code_fkey");
 
                     b.HasOne("CorePlatformApi.Domain.Entities.Org.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
-                        .HasConstraintName("definitions_tenant_id_fkey");
+                        .HasConstraintName("workflow_definitions_tenant_id_fkey");
 
                     b.Navigation("Branch");
 
@@ -17866,6 +21629,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.DocumentType", "DocumentType")
                         .WithMany()
                         .HasForeignKey("DocumentTypeCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .HasConstraintName("delegations_document_type_code_fkey");
 
@@ -17917,6 +21681,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     b.HasOne("CorePlatformApi.Domain.Entities.Mdm.DocumentType", "DocumentType")
                         .WithMany()
                         .HasForeignKey("DocumentTypeCode")
+                        .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("instances_document_type_code_fkey");
@@ -17941,7 +21706,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("instances_tenant_id_fkey");
 
-                    b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "Version")
+                    b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "WorkflowDefinitionVersion")
                         .WithMany()
                         .HasForeignKey("VersionId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -17964,7 +21729,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Tenant");
 
-                    b.Navigation("Version");
+                    b.Navigation("WorkflowDefinitionVersion");
                 });
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Workflow.WorkflowInstanceStep", b =>
@@ -17990,14 +21755,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Workflow.WorkflowStep", b =>
                 {
-                    b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "Version")
+                    b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "WorkflowDefinitionVersion")
                         .WithMany("WorkflowSteps")
                         .HasForeignKey("VersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("steps_version_id_fkey");
 
-                    b.Navigation("Version");
+                    b.Navigation("WorkflowDefinitionVersion");
                 });
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Workflow.WorkflowStepApprover", b =>
@@ -18082,7 +21847,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("transitions_to_step_id_fkey");
 
-                    b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "Version")
+                    b.HasOne("CorePlatformApi.Domain.Entities.Workflow.WorkflowDefinitionVersion", "WorkflowDefinitionVersion")
                         .WithMany("WorkflowTransitions")
                         .HasForeignKey("VersionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -18093,7 +21858,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
                     b.Navigation("ToStep");
 
-                    b.Navigation("Version");
+                    b.Navigation("WorkflowDefinitionVersion");
                 });
 
             modelBuilder.Entity("CorePlatformApi.Domain.Entities.Ai.AiConversation", b =>

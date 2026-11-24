@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Gateway;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Địa chỉ instance cụ thể của cluster (container trong Docker network)
 /// </summary>
-/// <remarks>Bảng <c>gateway.destinations</c>.</remarks>
-public class GatewayDestination : AuditableEntity
+/// <remarks>Bảng <c>destinations</c> (phân hệ gateway).</remarks>
+public class GatewayDestination : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Cluster
     /// </summary>

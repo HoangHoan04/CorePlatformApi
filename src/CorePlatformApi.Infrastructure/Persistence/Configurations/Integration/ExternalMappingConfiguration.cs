@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.external_mappings</c>.
+/// Cấu hình EF Core cho bảng <c>external_mappings</c>.
 /// </summary>
 public sealed class ExternalMappingConfiguration : IEntityTypeConfiguration<ExternalMapping>
 {
     public void Configure(EntityTypeBuilder<ExternalMapping> builder)
     {
-        builder.ToTable("external_mappings", "integration", tb =>
+        builder.ToTable("external_mappings", tb =>
         {
             tb.HasComment("Ánh xạ id nội bộ ↔ id hệ thống ngoài (sản phẩm ERP ↔ item_id Shopee, NV ↔ mã trên máy chấm công)");
         });
@@ -80,6 +80,39 @@ public sealed class ExternalMappingConfiguration : IEntityTypeConfiguration<Exte
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Tạo lúc");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(10)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(11)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(12)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(13)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(14)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.ExternalSystem, x.EntityType, x.ExternalId }, "uq_external_mapping_ext").IsUnique();
         builder.HasIndex(x => new { x.EntityType, x.InternalId }, "ix_external_mappings_internal");

@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Iam;
 
 /// <summary>
 /// Khóa ký JWT (RS256/ES256) phục vụ JWKS và xoay vòng khóa định kỳ
 /// </summary>
-/// <remarks>Bảng <c>iam.signing_keys</c>.</remarks>
-public class SigningKey
+/// <remarks>Bảng <c>signing_keys</c> (phân hệ iam).</remarks>
+public class SigningKey : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Key ID (header kid trong JWT)
     /// </summary>
@@ -60,10 +56,4 @@ public class SigningKey
     /// Gỡ khỏi JWKS sau thời điểm này
     /// </summary>
     public DateTimeOffset? ExpiresAt { get; set; }
-
-    /// <summary>
-    /// Thời điểm tạo
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

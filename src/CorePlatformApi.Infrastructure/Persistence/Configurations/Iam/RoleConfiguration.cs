@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.roles</c>.
+/// Cấu hình EF Core cho bảng <c>roles</c>.
 /// </summary>
 public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
 {
     public void Configure(EntityTypeBuilder<Role> builder)
     {
-        builder.ToTable("roles", "iam", tb =>
+        builder.ToTable("roles", tb =>
         {
             tb.HasComment("Vai trò. tenant_id NULL = vai trò mẫu toàn hệ thống (template) để tenant sao chép");
             tb.HasCheckConstraint("roles_status_check", "status IN ('ACTIVE','INACTIVE')");

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Chính sách guardrail: che PII, chặn chủ đề, phát hiện prompt injection, kiểm tra output
 /// </summary>
-/// <remarks>Bảng <c>ai.guardrail_policies</c>.</remarks>
-public class AiGuardrailPolicy : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>guardrail_policies</c> (phân hệ ai).</remarks>
+public class AiGuardrailPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = hệ thống)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Mã chính sách
     /// </summary>

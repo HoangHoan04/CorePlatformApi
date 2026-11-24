@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Workflow;
 
 /// <summary>
 /// Lượt thực thi của từng bước trong instance (một bước có thể lặp lại khi bị trả về)
 /// </summary>
-/// <remarks>Bảng <c>workflow.instance_steps</c>.</remarks>
-public class WorkflowInstanceStep
+/// <remarks>Bảng <c>instance_steps</c> (phân hệ workflow).</remarks>
+public class WorkflowInstanceStep : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Instance
     /// </summary>

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Storage;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>storage.buckets</c>.
+/// Cấu hình EF Core cho bảng <c>buckets</c>.
 /// </summary>
 public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<StorageBucket>
 {
     public void Configure(EntityTypeBuilder<StorageBucket> builder)
     {
-        builder.ToTable("buckets", "storage", tb =>
+        builder.ToTable("buckets", tb =>
         {
             tb.HasComment("Bucket lưu trữ theo mục đích (public-assets, private-docs, hr-sensitive...)");
             tb.HasCheckConstraint("buckets_encryption_check", "encryption IN ('NONE','SSE','SSE_KMS')");
@@ -28,27 +28,32 @@ public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<Storag
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
         builder.Property(x => x.ProviderId)
             .HasColumnName("provider_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Provider");
         builder.Property(x => x.Name)
             .HasColumnName("name")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .IsRequired()
             .HasComment("Tên bucket thật trên storage");
         builder.Property(x => x.Purpose)
             .HasColumnName("purpose")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(3)
+            .HasColumnOrder(4)
             .HasComment("Mục đích sử dụng");
         builder.Property(x => x.IsPublic)
             .HasColumnName("is_public")
             .HasColumnType("boolean")
-            .HasColumnOrder(4)
+            .HasColumnOrder(5)
             .IsRequired()
             .HasDefaultValueSql("false")
             .ValueGeneratedNever()
@@ -56,7 +61,7 @@ public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<Storag
         builder.Property(x => x.Versioning)
             .HasColumnName("versioning")
             .HasColumnType("boolean")
-            .HasColumnOrder(5)
+            .HasColumnOrder(6)
             .IsRequired()
             .HasDefaultValueSql("false")
             .ValueGeneratedNever()
@@ -64,7 +69,7 @@ public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<Storag
         builder.Property(x => x.Encryption)
             .HasColumnName("encryption")
             .HasColumnType("varchar(20)")
-            .HasColumnOrder(6)
+            .HasColumnOrder(7)
             .IsRequired()
             .HasDefaultValueSql("'SSE'")
             .ValueGeneratedNever()
@@ -72,12 +77,12 @@ public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<Storag
         builder.Property(x => x.RetentionDays)
             .HasColumnName("retention_days")
             .HasColumnType("int")
-            .HasColumnOrder(7)
+            .HasColumnOrder(8)
             .HasComment("Tự xóa file sau N ngày (lifecycle)");
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(8)
+            .HasColumnOrder(9)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
@@ -85,18 +90,36 @@ public sealed class StorageBucketConfiguration : IEntityTypeConfiguration<Storag
         builder.Property(x => x.CreatedBy)
             .HasColumnName("created_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(9)
+            .HasColumnOrder(10)
             .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
         builder.Property(x => x.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(10)
+            .HasColumnOrder(11)
             .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
         builder.Property(x => x.UpdatedBy)
             .HasColumnName("updated_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(11)
+            .HasColumnOrder(12)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(13)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(14)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.ProviderId, x.Name }, "uq_buckets").IsUnique();
 

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Storage;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Storage;
 /// <summary>
 /// Bucket lưu trữ theo mục đích (public-assets, private-docs, hr-sensitive...)
 /// </summary>
-/// <remarks>Bảng <c>storage.buckets</c>.</remarks>
-public class StorageBucket : AuditableEntity
+/// <remarks>Bảng <c>buckets</c> (phân hệ storage).</remarks>
+public class StorageBucket : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Provider
     /// </summary>

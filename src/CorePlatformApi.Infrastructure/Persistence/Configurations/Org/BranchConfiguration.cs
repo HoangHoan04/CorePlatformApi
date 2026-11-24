@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Org;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>org.branches</c>.
+/// Cấu hình EF Core cho bảng <c>branches</c>.
 /// </summary>
 public sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
 {
     public void Configure(EntityTypeBuilder<Branch> builder)
     {
-        builder.ToTable("branches", "org", tb =>
+        builder.ToTable("branches", tb =>
         {
             tb.HasComment("Chi nhánh / cửa hàng / kho / văn phòng thuộc công ty");
             tb.HasCheckConstraint("branches_branch_type_check", "branch_type IN ('HEAD_OFFICE','OFFICE','STORE','WAREHOUSE','FACTORY','REGION','OTHER')");
@@ -235,6 +235,7 @@ public sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
         builder.HasOne(x => x.Country)
             .WithMany()
             .HasForeignKey(x => x.CountryCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("branches_country_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.ManagerUser)

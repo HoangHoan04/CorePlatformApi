@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Gán vai trò cho user, có thể giới hạn vai trò trong một công ty/chi nhánh và có thời hạn
 /// </summary>
-/// <remarks>Bảng <c>iam.user_roles</c>.</remarks>
-public class UserRole : AuditableEntity
+/// <remarks>Bảng <c>user_roles</c> (phân hệ iam).</remarks>
+public class UserRole : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>

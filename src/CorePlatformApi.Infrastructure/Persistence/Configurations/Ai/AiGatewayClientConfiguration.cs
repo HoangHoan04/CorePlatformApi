@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.gateway_clients</c>.
+/// Cấu hình EF Core cho bảng <c>gateway_clients</c>.
 /// </summary>
 public sealed class AiGatewayClientConfiguration : IEntityTypeConfiguration<AiGatewayClient>
 {
     public void Configure(EntityTypeBuilder<AiGatewayClient> builder)
     {
-        builder.ToTable("gateway_clients", "ai", tb =>
+        builder.ToTable("gateway_clients", tb =>
         {
             tb.HasComment("Client nội bộ gọi AI Gateway (mỗi phân hệ/ứng dụng một client key) để định danh, rate limit, tính quota");
             tb.HasCheckConstraint("gateway_clients_status_check", "status IN ('ACTIVE','DISABLED','REVOKED')");
@@ -109,6 +109,24 @@ public sealed class AiGatewayClientConfiguration : IEntityTypeConfiguration<AiGa
             .HasColumnType("uuid")
             .HasColumnOrder(14)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(15)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(16)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(17)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => x.KeyPrefix, "gateway_clients_key_prefix_key").IsUnique();
         builder.HasIndex(x => x.KeyHash, "gateway_clients_key_hash_key").IsUnique();

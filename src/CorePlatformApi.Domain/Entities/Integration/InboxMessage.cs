@@ -1,11 +1,13 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Integration;
 
 /// <summary>
 /// Inbox/Idempotency: consumer ghi nhận message đã xử lý để không xử lý trùng
 /// </summary>
-/// <remarks>Bảng <c>integration.inbox_messages</c>.</remarks>
-public class InboxMessage
+/// <remarks>Bảng <c>inbox_messages</c> (phân hệ integration).</remarks>
+public class InboxMessage : BaseEntity
 {
     /// <summary>
     /// Service tiêu thụ

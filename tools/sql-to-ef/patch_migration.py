@@ -1,4 +1,4 @@
-"""Splice raw-SQL steps into the generated InitialCoreSchema migration."""
+"""Splice raw-SQL steps into the generated InitialCoreSchema migration (single schema: public)."""
 import re
 import sys
 
@@ -18,7 +18,7 @@ src = src.replace('using Microsoft.EntityFrameworkCore.Migrations;\n',
 anchor = '.Annotation("Npgsql:PostgresExtension:pgcrypto", ",,");\n'
 assert src.count(anchor) == 1
 src = src.replace(anchor, anchor + '''
-            // Schema core + hàm tiện ích (set_updated_at, create_monthly_partitions)
+            // Hàm trigger set_updated_at()
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.CoreFunctions));
 ''', 1)
 
@@ -26,8 +26,7 @@ src = src.replace(anchor, anchor + '''
 down_sig = '        /// <inheritdoc />\n        protected override void Down(MigrationBuilder migrationBuilder)\n        {\n'
 assert src.count(down_sig) == 1
 up_tail = '''
-            // Phần EF Core không biểu diễn được — giữ nguyên từ docs/base_erp_core.sql
-            migrationBuilder.Sql(SqlScripts.Load(SqlScripts.PartitionedTables));
+            // Phần EF Core không biểu diễn được — sinh từ docs/base_erp_core.sql
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.ExpressionIndexes));
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.UpdatedAtTriggers));
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.DocumentNumberFunction));
@@ -41,11 +40,7 @@ before = src[:idx].rstrip()
 assert before.endswith('}'), before[-50:]
 before = before[:-1].rstrip() + '\n' + up_tail
 down_head = '''
-            migrationBuilder.Sql("""
-                DROP FUNCTION IF EXISTS mdm.next_document_number(uuid, varchar, uuid, uuid, date);
-                DROP TABLE IF EXISTS audit.login_logs, audit.security_events, audit.data_change_logs,
-                    audit.api_request_logs, monitor.health_checks, ai.usage_logs, storage.file_access_logs CASCADE;
-                """);
+            migrationBuilder.Sql("DROP FUNCTION IF EXISTS next_document_number(uuid, varchar, uuid, uuid, date);");
 
 '''
 src = before + down_sig + down_head + src[idx + len(down_sig):]
@@ -56,7 +51,7 @@ assert src.rstrip().endswith(end_marker.rstrip()), src[-80:]
 body = src.rstrip()[:-len(end_marker)].rstrip()
 src = body + '''
 
-            migrationBuilder.Sql("DROP SCHEMA IF EXISTS core CASCADE;");
+            migrationBuilder.Sql("DROP FUNCTION IF EXISTS set_updated_at();");
 ''' + end_marker + '\n'
 
 open(path, 'w', encoding='utf-8', newline='\n').write(src)

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,8 +6,8 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Loại thuế (GTGT, TNDN, TNCN, Nhập khẩu, Tiêu thụ đặc biệt...)
 /// </summary>
-/// <remarks>Bảng <c>mdm.tax_types</c>.</remarks>
-public class TaxType : AuditableEntity
+/// <remarks>Bảng <c>tax_types</c> (phân hệ mdm).</remarks>
+public class TaxType : BaseEntity
 {
     /// <summary>
     /// Mã loại thuế (VAT, CIT, PIT, IMPORT, SCT)

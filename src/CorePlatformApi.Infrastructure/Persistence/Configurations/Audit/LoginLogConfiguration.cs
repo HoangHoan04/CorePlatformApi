@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,20 +6,19 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Audit;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>audit.login_logs</c>.
+/// Cấu hình EF Core cho bảng <c>login_logs</c>.
 /// </summary>
 public sealed class LoginLogConfiguration : IEntityTypeConfiguration<LoginLog>
 {
     public void Configure(EntityTypeBuilder<LoginLog> builder)
     {
-        builder.ToTable("login_logs", "audit", tb =>
+        builder.ToTable("login_logs", tb =>
         {
             tb.HasComment("Lịch sử đăng nhập/đăng xuất/refresh token (thành công & thất bại) kèm IP, thiết bị");
             tb.HasCheckConstraint("login_logs_event_type_check", "event_type IN ('LOGIN_SUCCESS','LOGIN_FAILED','LOGOUT','TOKEN_REFRESH','TOKEN_REUSE_DETECTED','MFA_SUCCESS','MFA_FAILED','ACCOUNT_LOCKED','SSO_LOGIN','IMPERSONATE')");
-            tb.ExcludeFromMigrations(); // bảng partition: tạo bằng Sql/010_partitioned_tables.sql
         });
 
-        builder.HasKey(x => new { x.Id, x.OccurredAt }).HasName("login_logs_pkey");
+        builder.HasKey(x => x.Id).HasName("login_logs_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -111,6 +110,54 @@ public sealed class LoginLogConfiguration : IEntityTypeConfiguration<LoginLog>
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Thời điểm");
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(16)
+            .IsRequired()
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedNever()
+            .HasComment("Thời điểm tạo bản ghi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(17)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(18)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(19)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(20)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người xóa mềm (users.id)");
 
+        builder.HasIndex(x => new { x.Id, x.OccurredAt }, "login_logs_id_occurred_at_key").IsUnique();
+        builder.HasIndex(x => new { x.UserId, x.OccurredAt }, "ix_login_logs_user")
+            .IsDescending(false, true);
+        builder.HasIndex(x => new { x.TenantId, x.OccurredAt }, "ix_login_logs_tenant")
+            .IsDescending(false, true);
+        builder.HasIndex(x => new { x.IpAddress, x.OccurredAt }, "ix_login_logs_ip")
+            .IsDescending(false, true);
     }
 }

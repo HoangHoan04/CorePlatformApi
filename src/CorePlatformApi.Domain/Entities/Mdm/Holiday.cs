@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Ngày lễ quốc gia (tenant_id NULL) và ngày lễ/nghỉ riêng của tenant
 /// </summary>
-/// <remarks>Bảng <c>mdm.holidays</c>.</remarks>
-public class Holiday : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>holidays</c> (phân hệ mdm); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class Holiday : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = lễ quốc gia)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Quốc gia
     /// </summary>

@@ -1,5 +1,5 @@
--- Sinh tự động từ docs/base_erp_core.sql — các phần EF Core không biểu diễn được.
-CREATE OR REPLACE FUNCTION mdm.next_document_number(
+-- Sinh tự động từ docs/base_erp_core.sql (đã làm phẳng về schema public) — các phần EF Core không biểu diễn được.
+CREATE OR REPLACE FUNCTION next_document_number(
     p_tenant_id uuid,
     p_document_type varchar,
     p_company_id uuid DEFAULT NULL,
@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION mdm.next_document_number(
 ) RETURNS text
 LANGUAGE plpgsql AS $$
 DECLARE
-    v_rule        mdm.numbering_rules%ROWTYPE;
+    v_rule        numbering_rules%ROWTYPE;
     v_period      text;
     v_scope       text;
     v_value       bigint;
@@ -20,7 +20,7 @@ DECLARE
 BEGIN
     -- Chọn quy tắc cụ thể nhất: chi nhánh > công ty > toàn tenant
     SELECT * INTO v_rule
-    FROM mdm.numbering_rules r
+    FROM numbering_rules r
     WHERE r.tenant_id = p_tenant_id
       AND r.document_type_code = p_document_type
       AND r.is_active AND NOT r.is_deleted
@@ -44,14 +44,14 @@ BEGIN
                     WHEN 'BRANCH'  THEN coalesce(p_branch_id::text, '-')
                     ELSE '-' END;
 
-    INSERT INTO mdm.numbering_counters AS c (rule_id, period_key, scope_key, current_value)
+    INSERT INTO numbering_counters AS c (rule_id, period_key, scope_key, current_value)
     VALUES (v_rule.id, v_period, v_scope, v_rule.start_value)
     ON CONFLICT (rule_id, period_key, scope_key)
     DO UPDATE SET current_value = c.current_value + v_rule.step, updated_at = now()
     RETURNING current_value INTO v_value;
 
-    SELECT code INTO v_branch_code FROM org.branches WHERE id = p_branch_id;
-    SELECT code INTO v_company_code FROM org.companies WHERE id = p_company_id;
+    SELECT code INTO v_branch_code FROM branches WHERE id = p_branch_id;
+    SELECT code INTO v_company_code FROM companies WHERE id = p_company_id;
 
     v_pattern := coalesce(v_rule.pattern,
                           coalesce(v_rule.prefix, '') || '{' || repeat('0', v_rule.padding_length) || '}' || coalesce(v_rule.suffix, ''));
@@ -75,4 +75,4 @@ BEGIN
 
     RETURN v_result;
 END $$;
-COMMENT ON FUNCTION mdm.next_document_number(uuid, varchar, uuid, uuid, date) IS 'Cấp số chứng từ tiếp theo theo quy tắc mdm.numbering_rules; an toàn khi nhiều request đồng thời';
+COMMENT ON FUNCTION next_document_number(uuid, varchar, uuid, uuid, date) IS 'Cấp số chứng từ tiếp theo theo quy tắc numbering_rules; an toàn khi nhiều request đồng thời';

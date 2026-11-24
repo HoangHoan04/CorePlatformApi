@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Workflow;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Phiên bản quy trình. Instance đang chạy giữ nguyên phiên bản cũ khi admin sửa quy trình
 /// </summary>
-/// <remarks>Bảng <c>workflow.definition_versions</c>.</remarks>
-public class WorkflowDefinitionVersion : AuditableEntity
+/// <remarks>Bảng <c>definition_versions</c> (phân hệ workflow).</remarks>
+public class WorkflowDefinitionVersion : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Quy trình
     /// </summary>

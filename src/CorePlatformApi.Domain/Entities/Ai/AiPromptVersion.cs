@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Ai;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Phiên bản prompt (quản lý thay đổi, rollback, A/B test)
 /// </summary>
-/// <remarks>Bảng <c>ai.prompt_versions</c>.</remarks>
-public class AiPromptVersion : AuditableEntity
+/// <remarks>Bảng <c>prompt_versions</c> (phân hệ ai).</remarks>
+public class AiPromptVersion : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Prompt
     /// </summary>

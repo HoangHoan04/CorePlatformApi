@@ -1,11 +1,13 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Iam;
 
 /// <summary>
 /// Danh sách đen access token (jti) bị thu hồi trước hạn. Bản chính nên ở Redis; bảng này để khôi phục khi Redis mất dữ liệu
 /// </summary>
-/// <remarks>Bảng <c>iam.revoked_access_tokens</c>.</remarks>
-public class RevokedAccessToken
+/// <remarks>Bảng <c>revoked_access_tokens</c> (phân hệ iam).</remarks>
+public class RevokedAccessToken : BaseEntity
 {
     /// <summary>
     /// JWT ID

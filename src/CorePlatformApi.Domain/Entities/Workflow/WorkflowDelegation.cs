@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Mdm;
@@ -9,21 +9,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Ủy quyền duyệt khi vắng mặt (đi công tác, nghỉ phép)
 /// </summary>
-/// <remarks>Bảng <c>workflow.delegations</c>.</remarks>
-public class WorkflowDelegation : AuditableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>delegations</c> (phân hệ workflow).</remarks>
+public class WorkflowDelegation : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Người ủy quyền
     /// </summary>

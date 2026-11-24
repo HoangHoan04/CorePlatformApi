@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Notify;
 using System.Net;
 
@@ -7,15 +8,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Thiết bị đã đăng nhập của user (giới hạn thiết bị, thu hồi theo thiết bị)
 /// </summary>
-/// <remarks>Bảng <c>iam.user_devices</c>.</remarks>
-public class UserDevice
+/// <remarks>Bảng <c>user_devices</c> (phân hệ iam).</remarks>
+public class UserDevice : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>

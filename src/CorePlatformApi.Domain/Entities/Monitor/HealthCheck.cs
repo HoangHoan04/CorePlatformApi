@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Monitor;
 
 /// <summary>
 /// Kết quả từng lần health check
 /// </summary>
-/// <remarks>Bảng <c>monitor.health_checks</c>; partition RANGE theo <c>checked_at</c> (tạo bằng SQL thô, không qua EF migration).</remarks>
-public class HealthCheck
+/// <remarks>Bảng <c>health_checks</c> (phân hệ monitor).</remarks>
+public class HealthCheck : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Service
     /// </summary>

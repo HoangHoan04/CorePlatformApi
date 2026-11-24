@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Notify;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Notify;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>notify.push_configs</c>.
+/// Cấu hình EF Core cho bảng <c>push_configs</c>.
 /// </summary>
 public sealed class PushConfigConfiguration : IEntityTypeConfiguration<PushConfig>
 {
     public void Configure(EntityTypeBuilder<PushConfig> builder)
     {
-        builder.ToTable("push_configs", "notify", tb =>
+        builder.ToTable("push_configs", tb =>
         {
             tb.HasComment("Cấu hình nhà cung cấp push theo ứng dụng mobile (FCM, APNs)");
             tb.HasCheckConstraint("push_configs_provider_check", "provider IN ('FCM','APNS','HMS')");
@@ -111,6 +111,24 @@ public sealed class PushConfigConfiguration : IEntityTypeConfiguration<PushConfi
             .HasColumnType("uuid")
             .HasColumnOrder(14)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(15)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(16)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(17)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.AppCode, x.Provider }, "uq_push_configs")
             .IsUnique()

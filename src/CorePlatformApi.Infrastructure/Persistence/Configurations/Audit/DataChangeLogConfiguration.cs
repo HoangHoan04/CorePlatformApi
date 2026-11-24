@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,21 +6,20 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Audit;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>audit.data_change_logs</c>.
+/// Cấu hình EF Core cho bảng <c>data_change_logs</c>.
 /// </summary>
 public sealed class DataChangeLogConfiguration : IEntityTypeConfiguration<DataChangeLog>
 {
     public void Configure(EntityTypeBuilder<DataChangeLog> builder)
     {
-        builder.ToTable("data_change_logs", "audit", tb =>
+        builder.ToTable("data_change_logs", tb =>
         {
             tb.HasComment("Lịch sử thay đổi dữ liệu nhạy cảm (old/new value) phục vụ đối soát kế toán, kho, nhân sự. Các phân hệ gửi qua event hoặc ghi trực tiếp");
             tb.HasCheckConstraint("data_change_logs_action_check", "action IN ('INSERT','UPDATE','DELETE','RESTORE','APPROVE','EXPORT')");
             tb.HasCheckConstraint("data_change_logs_source_check", "source IN ('WEB','MOBILE','API','IMPORT','JOB','WORKFLOW','SYSTEM')");
-            tb.ExcludeFromMigrations(); // bảng partition: tạo bằng Sql/010_partitioned_tables.sql
         });
 
-        builder.HasKey(x => new { x.Id, x.ChangedAt }).HasName("data_change_logs_pkey");
+        builder.HasKey(x => x.Id).HasName("data_change_logs_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -130,6 +129,54 @@ public sealed class DataChangeLogConfiguration : IEntityTypeConfiguration<DataCh
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Thời điểm");
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(19)
+            .IsRequired()
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedNever()
+            .HasComment("Thời điểm tạo bản ghi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(20)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(23)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(24)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(25)
+            .HasComment("Người xóa mềm (users.id)");
 
+        builder.HasIndex(x => new { x.Id, x.ChangedAt }, "data_change_logs_id_changed_at_key").IsUnique();
+        builder.HasIndex(x => new { x.EntityType, x.EntityId, x.ChangedAt }, "ix_data_change_entity")
+            .IsDescending(false, false, true);
+        builder.HasIndex(x => new { x.ChangedBy, x.ChangedAt }, "ix_data_change_user")
+            .IsDescending(false, true);
+        builder.HasIndex(x => new { x.TenantId, x.ModuleCode, x.ChangedAt }, "ix_data_change_tenant")
+            .IsDescending(false, false, true);
     }
 }

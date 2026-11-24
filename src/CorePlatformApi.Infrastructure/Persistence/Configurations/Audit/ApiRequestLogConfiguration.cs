@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,19 +6,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Audit;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>audit.api_request_logs</c>.
+/// Cấu hình EF Core cho bảng <c>api_request_logs</c>.
 /// </summary>
 public sealed class ApiRequestLogConfiguration : IEntityTypeConfiguration<ApiRequestLog>
 {
     public void Configure(EntityTypeBuilder<ApiRequestLog> builder)
     {
-        builder.ToTable("api_request_logs", "audit", tb =>
+        builder.ToTable("api_request_logs", tb =>
         {
             tb.HasComment("Log request đi qua API Gateway (thường đẩy song song sang Loki/ELK; bảng này giữ ngắn hạn để tra cứu nhanh theo traceId)");
-            tb.ExcludeFromMigrations(); // bảng partition: tạo bằng Sql/010_partitioned_tables.sql
         });
 
-        builder.HasKey(x => new { x.Id, x.OccurredAt }).HasName("api_request_logs_pkey");
+        builder.HasKey(x => x.Id).HasName("api_request_logs_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -28,17 +27,17 @@ public sealed class ApiRequestLogConfiguration : IEntityTypeConfiguration<ApiReq
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
-        builder.Property(x => x.TraceId)
-            .HasColumnName("trace_id")
-            .HasColumnType("varchar(64)")
-            .HasColumnOrder(1)
-            .IsRequired()
-            .HasComment("Trace id (trả về client qua header X-Trace-Id)");
         builder.Property(x => x.TenantId)
             .HasColumnName("tenant_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(1)
             .HasComment("Tenant");
+        builder.Property(x => x.TraceId)
+            .HasColumnName("trace_id")
+            .HasColumnType("varchar(64)")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Trace id (trả về client qua header X-Trace-Id)");
         builder.Property(x => x.UserId)
             .HasColumnName("user_id")
             .HasColumnType("uuid")
@@ -139,6 +138,54 @@ public sealed class ApiRequestLogConfiguration : IEntityTypeConfiguration<ApiReq
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Thời điểm");
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .IsRequired()
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedNever()
+            .HasComment("Thời điểm tạo bản ghi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(23)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(24)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(25)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(26)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(27)
+            .HasComment("Người xóa mềm (users.id)");
 
+        builder.HasIndex(x => new { x.Id, x.OccurredAt }, "api_request_logs_id_occurred_at_key").IsUnique();
+        builder.HasIndex(x => x.TraceId, "ix_api_logs_trace");
+        builder.HasIndex(x => new { x.TenantId, x.OccurredAt }, "ix_api_logs_tenant")
+            .IsDescending(false, true);
+        builder.HasIndex(x => x.OccurredAt, "ix_api_logs_errors")
+            .IsDescending(true)
+            .HasFilter("status_code >= 500");
     }
 }

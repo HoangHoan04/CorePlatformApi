@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Danh mục phân hệ/module của hệ sinh thái (CORE, HRM, CRM, WMS, AI...). Dùng cho phân quyền theo phân hệ và routing
 /// </summary>
-/// <remarks>Bảng <c>iam.modules</c>.</remarks>
-public class Module : AuditableEntity
+/// <remarks>Bảng <c>modules</c> (phân hệ iam).</remarks>
+public class Module : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã phân hệ (CORE, HRM, CRM, WMS, AI)
     /// </summary>

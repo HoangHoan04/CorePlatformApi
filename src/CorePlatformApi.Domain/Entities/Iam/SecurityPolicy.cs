@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 using System.Net;
@@ -8,21 +8,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Chính sách bảo mật tài khoản theo tenant (NULL = mặc định toàn hệ thống)
 /// </summary>
-/// <remarks>Bảng <c>iam.security_policies</c>.</remarks>
-public class SecurityPolicy : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>security_policies</c> (phân hệ iam).</remarks>
+public class SecurityPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = chính sách mặc định)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Độ dài tối thiểu
     /// </summary>

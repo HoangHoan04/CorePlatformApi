@@ -7,9 +7,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 namespace CorePlatformApi.Infrastructure.Persistence;
 
 /// <summary>
-/// DbContext của nền tảng lõi. Mô hình bám sát 1-1 với docs/base_erp_core.sql
-/// (schema, tên bảng/cột snake_case, kiểu cột, comment, CHECK, UNIQUE, index, FK).
-/// Các DbSet nằm trong ApplicationDbContext.DbSets.cs (sinh tự động).
+/// DbContext của nền tảng lõi: một database, mọi bảng nằm trong schema public và kế thừa <see cref="BaseEntity"/>.
+/// Mô hình sinh từ docs/base_erp_core.sql (tools/sql-to-ef/gen.py): tên bảng/cột snake_case, kiểu cột,
+/// comment, CHECK, UNIQUE, index, FK. Các DbSet nằm trong ApplicationDbContext.DbSets.cs (sinh tự động).
 /// </summary>
 public partial class ApplicationDbContext : DbContext, IApplicationDbContext
 {
@@ -40,22 +40,20 @@ public partial class ApplicationDbContext : DbContext, IApplicationDbContext
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var clrType = entityType.ClrType;
+            if (!typeof(BaseEntity).IsAssignableFrom(clrType))
+            {
+                continue;
+            }
 
             // Optimistic concurrency bằng cột hệ thống xmin (không tạo cột vật lý).
-            if (typeof(AuditableEntity).IsAssignableFrom(clrType))
-            {
-                modelBuilder.Entity(clrType)
-                    .Property(nameof(AuditableEntity.RowVersion))
-                    .IsRowVersion();
-            }
+            modelBuilder.Entity(clrType)
+                .Property(nameof(BaseEntity.Version))
+                .IsRowVersion();
 
             // Ẩn bản ghi đã xóa mềm; dùng IgnoreQueryFilters() khi cần xem cả bản ghi đã xóa.
-            if (typeof(ISoftDeletable).IsAssignableFrom(clrType))
-            {
-                var parameter = Expression.Parameter(clrType, "e");
-                var body = Expression.Not(Expression.Property(parameter, nameof(ISoftDeletable.IsDeleted)));
-                modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(body, parameter));
-            }
+            var parameter = Expression.Parameter(clrType, "e");
+            var body = Expression.Not(Expression.Property(parameter, nameof(BaseEntity.IsDeleted)));
+            modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(body, parameter));
         }
     }
 }

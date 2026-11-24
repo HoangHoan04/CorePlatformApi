@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Storage;
 /// <summary>
 /// Cấu hình nhà cung cấp Object Storage (MinIO, S3, R2...). Hỗ trợ tenant dùng storage riêng
 /// </summary>
-/// <remarks>Bảng <c>storage.providers</c>.</remarks>
-public class StorageProvider : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>storage_providers</c> (phân hệ storage).</remarks>
+public class StorageProvider : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = storage hệ thống)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Mã cấu hình
     /// </summary>

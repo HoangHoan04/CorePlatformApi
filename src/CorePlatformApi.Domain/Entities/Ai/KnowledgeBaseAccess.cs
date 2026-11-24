@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Ai;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Phân quyền truy cập kho tri thức theo vai trò/phòng ban/chi nhánh/user
 /// </summary>
-/// <remarks>Bảng <c>ai.knowledge_base_access</c>.</remarks>
-public class KnowledgeBaseAccess : AuditableEntity
+/// <remarks>Bảng <c>knowledge_base_access</c> (phân hệ ai).</remarks>
+public class KnowledgeBaseAccess : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Kho tri thức
     /// </summary>

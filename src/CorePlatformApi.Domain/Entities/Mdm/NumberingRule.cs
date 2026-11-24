@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Quy tắc sinh mã tự động theo loại chứng từ, có thể riêng theo công ty/chi nhánh. Pattern hỗ trợ token {YYYY} {YY} {MM} {DD} {YYMM} {BRANCH} {COMPANY} {0001}
 /// </summary>
-/// <remarks>Bảng <c>mdm.numbering_rules</c>.</remarks>
-public class NumberingRule : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>numbering_rules</c> (phân hệ mdm); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class NumberingRule : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Loại chứng từ
     /// </summary>

@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using System.Net;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Token một lần: quên mật khẩu, xác thực email/SĐT, lời mời kích hoạt, OTP đăng nhập
 /// </summary>
-/// <remarks>Bảng <c>iam.verification_tokens</c>.</remarks>
-public class VerificationToken
+/// <remarks>Bảng <c>verification_tokens</c> (phân hệ iam).</remarks>
+public class VerificationToken : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>
@@ -57,12 +52,6 @@ public class VerificationToken
     /// IP yêu cầu
     /// </summary>
     public IPAddress? CreatedIp { get; set; }
-
-    /// <summary>
-    /// Thời điểm tạo
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

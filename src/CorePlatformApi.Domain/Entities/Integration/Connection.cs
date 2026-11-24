@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Kết nối tới hệ thống bên thứ 3 (lưu credential/OAuth token): sàn TMĐT, nhà cung cấp HĐĐT, ngân hàng, Zalo OA...
 /// </summary>
-/// <remarks>Bảng <c>integration.connections</c>.</remarks>
-public class Connection : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>connections</c> (phân hệ integration); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class Connection : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Công ty sở hữu kết nối
     /// </summary>

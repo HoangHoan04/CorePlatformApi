@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
@@ -9,13 +9,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Workflow;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>workflow.instances</c>.
+/// Cấu hình EF Core cho bảng <c>instances</c>.
 /// </summary>
 public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<WorkflowInstance>
 {
     public void Configure(EntityTypeBuilder<WorkflowInstance> builder)
     {
-        builder.ToTable("instances", "workflow", tb =>
+        builder.ToTable("instances", tb =>
         {
             tb.HasComment("Một lượt chạy quy trình cho một chứng từ cụ thể");
             tb.HasCheckConstraint("instances_status_check", "status IN ('DRAFT','PENDING','APPROVED','REJECTED','RETURNED','CANCELLED','RECALLED','ERROR')");
@@ -195,6 +195,24 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
             .HasColumnType("uuid")
             .HasColumnOrder(28)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(29)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(30)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(31)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.DocumentTypeCode, x.DocumentId }, "ix_wf_instances_document");
         builder.HasIndex(x => new { x.RequesterId, x.SubmittedAt }, "ix_wf_instances_requester")
@@ -215,7 +233,7 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
             .HasForeignKey(x => x.DefinitionId)
             .HasConstraintName("instances_definition_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
-        builder.HasOne(x => x.Version)
+        builder.HasOne(x => x.WorkflowDefinitionVersion)
             .WithMany()
             .HasForeignKey(x => x.VersionId)
             .HasConstraintName("instances_version_id_fkey")
@@ -223,6 +241,7 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
         builder.HasOne(x => x.DocumentType)
             .WithMany()
             .HasForeignKey(x => x.DocumentTypeCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("instances_document_type_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Requester)

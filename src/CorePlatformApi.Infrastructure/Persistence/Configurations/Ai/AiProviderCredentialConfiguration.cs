@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.provider_credentials</c>.
+/// Cấu hình EF Core cho bảng <c>provider_credentials</c>.
 /// </summary>
 public sealed class AiProviderCredentialConfiguration : IEntityTypeConfiguration<AiProviderCredential>
 {
     public void Configure(EntityTypeBuilder<AiProviderCredential> builder)
     {
-        builder.ToTable("provider_credentials", "ai", tb =>
+        builder.ToTable("provider_credentials", tb =>
         {
             tb.HasComment("API key của nhà cung cấp AI — lưu tập trung, các service con không giữ key. Tenant có thể dùng key riêng (BYOK)");
             tb.HasCheckConstraint("provider_credentials_status_check", "status IN ('ACTIVE','DISABLED','EXHAUSTED','INVALID')");
@@ -116,6 +116,24 @@ public sealed class AiProviderCredentialConfiguration : IEntityTypeConfiguration
             .HasColumnType("uuid")
             .HasColumnOrder(15)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(16)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(17)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(18)
+            .HasComment("Người xóa mềm (users.id)");
 
 
         builder.HasOne(x => x.Tenant)

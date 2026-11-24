@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Alias model logic (default-chat, cheap-summary, embedding-default) để đổi model không cần sửa code; hỗ trợ fallback
 /// </summary>
-/// <remarks>Bảng <c>ai.model_aliases</c>.</remarks>
-public class AiModelAlias : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>model_aliases</c> (phân hệ ai).</remarks>
+public class AiModelAlias : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = alias hệ thống)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Mã alias
     /// </summary>

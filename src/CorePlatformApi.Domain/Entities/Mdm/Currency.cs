@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,8 +6,8 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Danh mục tiền tệ theo ISO 4217
 /// </summary>
-/// <remarks>Bảng <c>mdm.currencies</c>.</remarks>
-public class Currency : AuditableEntity
+/// <remarks>Bảng <c>currencies</c> (phân hệ mdm).</remarks>
+public class Currency : BaseEntity
 {
     /// <summary>
     /// Mã ISO 4217 (VND, USD, EUR...)

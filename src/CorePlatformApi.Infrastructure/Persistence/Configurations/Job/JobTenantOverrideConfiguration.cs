@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Job;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Job;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>job.tenant_overrides</c>.
+/// Cấu hình EF Core cho bảng <c>tenant_overrides</c>.
 /// </summary>
 public sealed class JobTenantOverrideConfiguration : IEntityTypeConfiguration<JobTenantOverride>
 {
     public void Configure(EntityTypeBuilder<JobTenantOverride> builder)
     {
-        builder.ToTable("tenant_overrides", "job", tb =>
+        builder.ToTable("tenant_overrides", tb =>
         {
             tb.HasComment("Ghi đè lịch/tham số job theo tenant (VD: tenant A chốt công lúc 23:00, tenant B lúc 01:00)");
         });
@@ -28,18 +28,18 @@ public sealed class JobTenantOverrideConfiguration : IEntityTypeConfiguration<Jo
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
-        builder.Property(x => x.JobId)
-            .HasColumnName("job_id")
-            .HasColumnType("uuid")
-            .HasColumnOrder(1)
-            .IsRequired()
-            .HasComment("Job");
         builder.Property(x => x.TenantId)
             .HasColumnName("tenant_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(1)
             .IsRequired()
             .HasComment("Tenant");
+        builder.Property(x => x.JobId)
+            .HasColumnName("job_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Job");
         builder.Property(x => x.CronExpression)
             .HasColumnName("cron_expression")
             .HasColumnType("varchar(100)")
@@ -81,6 +81,24 @@ public sealed class JobTenantOverrideConfiguration : IEntityTypeConfiguration<Jo
             .HasColumnType("uuid")
             .HasColumnOrder(9)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(10)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(11)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(12)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.JobId, x.TenantId }, "uq_job_tenant_overrides").IsUnique();
 

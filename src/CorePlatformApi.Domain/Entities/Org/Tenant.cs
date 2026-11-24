@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Storage;
@@ -8,15 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Org;
 /// <summary>
 /// Tenant = Tập đoàn/khách hàng thuê hệ thống. Mọi dữ liệu nghiệp vụ đều gắn tenant_id để cô lập dữ liệu
 /// </summary>
-/// <remarks>Bảng <c>org.tenants</c>.</remarks>
-public class Tenant : SoftDeletableEntity
+/// <remarks>Bảng <c>tenants</c> (phân hệ org); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class Tenant : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã tenant duy nhất, dùng trong subdomain/đăng nhập (VD: remak)
     /// </summary>

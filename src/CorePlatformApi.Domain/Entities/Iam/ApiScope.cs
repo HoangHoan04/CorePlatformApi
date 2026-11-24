@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,8 +6,8 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Danh mục scope API cấp cho client/API key (hrm.read, wms.write, openid...)
 /// </summary>
-/// <remarks>Bảng <c>iam.api_scopes</c>.</remarks>
-public class ApiScope : AuditableEntity
+/// <remarks>Bảng <c>api_scopes</c> (phân hệ iam).</remarks>
+public class ApiScope : BaseEntity
 {
     /// <summary>
     /// Mã scope (hrm.employee.read)

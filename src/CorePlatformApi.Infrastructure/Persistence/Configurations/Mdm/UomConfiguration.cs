@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.uoms</c>.
+/// Cấu hình EF Core cho bảng <c>uoms</c>.
 /// </summary>
 public sealed class UomConfiguration : IEntityTypeConfiguration<Uom>
 {
     public void Configure(EntityTypeBuilder<Uom> builder)
     {
-        builder.ToTable("uoms", "mdm", tb =>
+        builder.ToTable("uoms", tb =>
         {
             tb.HasComment("Đơn vị tính (Cái, Hộp, Thùng, Kg, Lít...). Quy đổi trong cùng nhóm qua ratio_to_base");
             tb.HasCheckConstraint("uoms_ratio_to_base_check", "ratio_to_base > 0");

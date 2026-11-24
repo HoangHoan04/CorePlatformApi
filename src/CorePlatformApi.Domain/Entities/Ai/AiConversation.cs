@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,20 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Hội thoại chatbot nội bộ
 /// </summary>
-/// <remarks>Bảng <c>ai.conversations</c>.</remarks>
-public class AiConversation : IMustHaveTenant
+/// <remarks>Bảng <c>conversations</c> (phân hệ ai).</remarks>
+public class AiConversation : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Người hỏi
     /// </summary>
@@ -53,12 +42,6 @@ public class AiConversation : IMustHaveTenant
     /// Tin nhắn cuối
     /// </summary>
     public DateTimeOffset? LastMessageAt { get; set; }
-
-    /// <summary>
-    /// Tạo lúc
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

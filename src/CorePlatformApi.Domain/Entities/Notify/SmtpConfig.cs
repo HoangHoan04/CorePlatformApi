@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Cấu hình SMTP theo hệ thống, tenant hoặc từng công ty
 /// </summary>
-/// <remarks>Bảng <c>notify.smtp_configs</c>.</remarks>
-public class SmtpConfig : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>smtp_configs</c> (phân hệ notify).</remarks>
+public class SmtpConfig : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = SMTP hệ thống)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Công ty dùng SMTP riêng
     /// </summary>

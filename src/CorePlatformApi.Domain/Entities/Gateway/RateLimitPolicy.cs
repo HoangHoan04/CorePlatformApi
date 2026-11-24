@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Gateway;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Chính sách rate limit/throttling theo IP, user, tenant, client, API key
 /// </summary>
-/// <remarks>Bảng <c>gateway.rate_limit_policies</c>.</remarks>
-public class RateLimitPolicy : AuditableEntity
+/// <remarks>Bảng <c>rate_limit_policies</c> (phân hệ gateway).</remarks>
+public class RateLimitPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã chính sách (default-user, login-strict, partner-basic)
     /// </summary>

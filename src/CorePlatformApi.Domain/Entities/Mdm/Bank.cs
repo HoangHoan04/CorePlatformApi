@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Danh mục ngân hàng (dùng cho VietQR, chi lương, thanh toán NCC)
 /// </summary>
-/// <remarks>Bảng <c>mdm.banks</c>.</remarks>
-public class Bank : AuditableEntity
+/// <remarks>Bảng <c>banks</c> (phân hệ mdm).</remarks>
+public class Bank : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Quốc gia
     /// </summary>

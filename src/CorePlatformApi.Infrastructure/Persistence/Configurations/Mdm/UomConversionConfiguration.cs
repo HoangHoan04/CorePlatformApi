@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.uom_conversions</c>.
+/// Cấu hình EF Core cho bảng <c>uom_conversions</c>.
 /// </summary>
 public sealed class UomConversionConfiguration : IEntityTypeConfiguration<UomConversion>
 {
     public void Configure(EntityTypeBuilder<UomConversion> builder)
     {
-        builder.ToTable("uom_conversions", "mdm", tb =>
+        builder.ToTable("uom_conversions", tb =>
         {
             tb.HasComment("Bảng quy đổi ĐVT tổng quát giữa hai đơn vị (kể cả khác nhóm/không tỷ lệ cố định). Quy đổi riêng theo sản phẩm (1 thùng = 24 lon) đặt ở WMS");
             tb.HasCheckConstraint("uom_conversions_factor_check", "factor > 0");
@@ -85,6 +85,24 @@ public sealed class UomConversionConfiguration : IEntityTypeConfiguration<UomCon
             .HasColumnType("uuid")
             .HasColumnOrder(9)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(10)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(11)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(12)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.FromUomId, x.ToUomId }, "uq_uom_conversions")
             .IsUnique()

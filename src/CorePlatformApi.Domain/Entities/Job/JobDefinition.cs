@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Job;
 /// <summary>
 /// Danh mục job định kỳ toàn hệ thống (chốt công cuối ngày, cảnh báo tồn kho, dọn file rác, đồng bộ tỷ giá...)
 /// </summary>
-/// <remarks>Bảng <c>job.definitions</c>.</remarks>
-public class JobDefinition : AuditableEntity
+/// <remarks>Bảng <c>job_definitions</c> (phân hệ job).</remarks>
+public class JobDefinition : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã job (core.storage.cleanup_temp_files)
     /// </summary>

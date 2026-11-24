@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Tỷ giá quy đổi theo thời điểm
 /// </summary>
-/// <remarks>Bảng <c>mdm.exchange_rates</c>.</remarks>
-public class ExchangeRate : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>exchange_rates</c> (phân hệ mdm).</remarks>
+public class ExchangeRate : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = tỷ giá hệ thống đồng bộ tự động)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Tiền tệ nguồn (USD)
     /// </summary>

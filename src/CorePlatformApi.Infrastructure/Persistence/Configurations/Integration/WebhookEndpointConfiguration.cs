@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Integration;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.webhook_endpoints</c>.
+/// Cấu hình EF Core cho bảng <c>webhook_endpoints</c>.
 /// </summary>
 public sealed class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndpoint>
 {
     public void Configure(EntityTypeBuilder<WebhookEndpoint> builder)
     {
-        builder.ToTable("webhook_endpoints", "integration", tb =>
+        builder.ToTable("webhook_endpoints", tb =>
         {
             tb.HasComment("Endpoint webhook OUTBOUND: ERP bắn sự kiện ra hệ thống bên thứ 3");
             tb.HasCheckConstraint("webhook_endpoints_http_method_check", "http_method IN ('POST','PUT','PATCH')");

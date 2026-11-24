@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Config;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Config;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>config.translations</c>.
+/// Cấu hình EF Core cho bảng <c>translations</c>.
 /// </summary>
 public sealed class TranslationConfiguration : IEntityTypeConfiguration<Translation>
 {
     public void Configure(EntityTypeBuilder<Translation> builder)
     {
-        builder.ToTable("translations", "config", tb =>
+        builder.ToTable("translations", tb =>
         {
             tb.HasComment("Bản dịch theo ngôn ngữ; tenant có thể ghi đè thuật ngữ riêng (VD: \"Nhân viên\" → \"Cộng sự\")");
         });
@@ -28,23 +28,23 @@ public sealed class TranslationConfiguration : IEntityTypeConfiguration<Translat
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant ghi đè (NULL = bản dịch chuẩn)");
         builder.Property(x => x.KeyId)
             .HasColumnName("key_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Khóa dịch");
         builder.Property(x => x.LanguageCode)
             .HasColumnName("language_code")
             .HasColumnType("varchar(10)")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .IsRequired()
             .HasComment("Ngôn ngữ");
-        builder.Property(x => x.TenantId)
-            .HasColumnName("tenant_id")
-            .HasColumnType("uuid")
-            .HasColumnOrder(3)
-            .HasComment("Tenant ghi đè (NULL = bản dịch chuẩn)");
         builder.Property(x => x.Value)
             .HasColumnName("value")
             .HasColumnType("text")
@@ -90,6 +90,24 @@ public sealed class TranslationConfiguration : IEntityTypeConfiguration<Translat
             .HasColumnType("uuid")
             .HasColumnOrder(10)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(11)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(12)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(13)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.KeyId, x.LanguageCode, x.TenantId }, "uq_translations")
             .IsUnique()
@@ -103,6 +121,7 @@ public sealed class TranslationConfiguration : IEntityTypeConfiguration<Translat
         builder.HasOne(x => x.Language)
             .WithMany()
             .HasForeignKey(x => x.LanguageCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("translations_language_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Tenant)

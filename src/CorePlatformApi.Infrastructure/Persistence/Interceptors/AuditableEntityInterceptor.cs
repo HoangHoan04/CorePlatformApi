@@ -1,3 +1,4 @@
+using System.Reflection;
 using CorePlatformApi.Application.Common.Interfaces;
 using CorePlatformApi.Domain.Common;
 using Microsoft.EntityFrameworkCore;
@@ -6,8 +7,9 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace CorePlatformApi.Infrastructure.Persistence.Interceptors;
 
 /// <summary>
-/// Tự gán cột audit (created_*, updated_*), chuyển Remove() thành xóa mềm cho entity <see cref="ISoftDeletable"/>
-/// và chuẩn hóa mọi DateTimeOffset về UTC (Npgsql chỉ ghi timestamptz với offset 0).
+/// Cho mọi <see cref="BaseEntity"/>: tự gán cột audit (created_*, updated_*), chuyển <c>Remove()</c> thành xóa mềm
+/// với bảng gắn <see cref="SoftDeleteAttribute"/>, và chuẩn hóa mọi DateTimeOffset về UTC
+/// (Npgsql chỉ ghi timestamptz với offset 0).
 /// </summary>
 public sealed class AuditableEntityInterceptor(ICurrentUserService? currentUser = null) : SaveChangesInterceptor
 {
@@ -36,30 +38,29 @@ public sealed class AuditableEntityInterceptor(ICurrentUserService? currentUser 
         var now = DateTimeOffset.UtcNow;
         var userId = currentUser?.UserId;
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
         {
-            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable softDeletable)
+            var entity = entry.Entity;
+
+            if (entry.State == EntityState.Deleted && entity.GetType().GetCustomAttribute<SoftDeleteAttribute>() is not null)
             {
                 entry.State = EntityState.Modified;
-                softDeletable.IsDeleted = true;
-                softDeletable.DeletedAt = now;
-                softDeletable.DeletedBy = userId;
+                entity.IsDeleted = true;
+                entity.DeletedAt = now;
+                entity.DeletedBy = userId;
             }
 
-            if (entry.Entity is IAuditableEntity auditable)
+            if (entry.State == EntityState.Added)
             {
-                if (entry.State == EntityState.Added)
-                {
-                    auditable.CreatedAt = now;
-                    auditable.CreatedBy ??= userId;
-                }
-                else if (entry.State == EntityState.Modified)
-                {
-                    auditable.UpdatedAt = now;
-                    auditable.UpdatedBy = userId;
-                    entry.Property(nameof(IAuditableEntity.CreatedAt)).IsModified = false;
-                    entry.Property(nameof(IAuditableEntity.CreatedBy)).IsModified = false;
-                }
+                entity.CreatedAt = now;
+                entity.CreatedBy ??= userId;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entity.UpdatedAt = now;
+                entity.UpdatedBy = userId;
+                entry.Property(e => e.CreatedAt).IsModified = false;
+                entry.Property(e => e.CreatedBy).IsModified = false;
             }
 
             if (entry.State is EntityState.Added or EntityState.Modified)

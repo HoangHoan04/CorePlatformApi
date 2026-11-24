@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Đơn vị hành chính phân cấp tổng quát (Tỉnh/TP → [Quận/Huyện] → Phường/Xã). Hỗ trợ cả mô hình 3 cấp cũ và 2 cấp sau sáp nhập 01/07/2025 nhờ effective_from/effective_to
 /// </summary>
-/// <remarks>Bảng <c>mdm.administrative_units</c>.</remarks>
-public class AdministrativeUnit : AuditableEntity
+/// <remarks>Bảng <c>administrative_units</c> (phân hệ mdm).</remarks>
+public class AdministrativeUnit : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Quốc gia
     /// </summary>

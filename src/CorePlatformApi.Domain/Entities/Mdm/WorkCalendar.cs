@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Lịch làm việc (ca hành chính chuẩn) dùng chung: HRM tính công, WMS tính hạn giao, CRM hẹn lịch chăm sóc
 /// </summary>
-/// <remarks>Bảng <c>mdm.work_calendars</c>.</remarks>
-public class WorkCalendar : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>work_calendars</c> (phân hệ mdm); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class WorkCalendar : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Công ty áp dụng (NULL = toàn tenant)
     /// </summary>

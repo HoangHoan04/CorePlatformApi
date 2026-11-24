@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.outbox_messages</c>.
+/// Cấu hình EF Core cho bảng <c>outbox_messages</c>.
 /// </summary>
 public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
-        builder.ToTable("outbox_messages", "integration", tb =>
+        builder.ToTable("outbox_messages", tb =>
         {
             tb.HasComment("Transactional Outbox: event được ghi cùng transaction nghiệp vụ, worker đọc và publish lên message broker");
             tb.HasCheckConstraint("outbox_messages_status_check", "status IN ('PENDING','PUBLISHED','FAILED','DEAD')");
@@ -110,6 +110,47 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
             .HasColumnType("timestamptz")
             .HasColumnOrder(13)
             .HasComment("Publish thành công lúc");
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(14)
+            .IsRequired()
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedNever()
+            .HasComment("Thời điểm tạo bản ghi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(16)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(17)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(18)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(19)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(20)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => x.NextAttemptAt, "ix_outbox_pending")
             .HasFilter("status IN ('PENDING','FAILED')");

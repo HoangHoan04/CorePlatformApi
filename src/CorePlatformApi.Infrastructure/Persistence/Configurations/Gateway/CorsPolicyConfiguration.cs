@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Gateway;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Gateway;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>gateway.cors_policies</c>.
+/// Cấu hình EF Core cho bảng <c>cors_policies</c>.
 /// </summary>
 public sealed class CorsPolicyConfiguration : IEntityTypeConfiguration<CorsPolicy>
 {
     public void Configure(EntityTypeBuilder<CorsPolicy> builder)
     {
-        builder.ToTable("cors_policies", "gateway", tb =>
+        builder.ToTable("cors_policies", tb =>
         {
             tb.HasComment("Chính sách CORS (toàn hệ thống hoặc theo tenant khi tenant có domain riêng)");
         });
@@ -108,6 +108,24 @@ public sealed class CorsPolicyConfiguration : IEntityTypeConfiguration<CorsPolic
             .HasColumnType("uuid")
             .HasColumnOrder(12)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(13)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(14)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.Code }, "uq_cors_policies")
             .IsUnique()

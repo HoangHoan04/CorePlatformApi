@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Org;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>org.departments</c>.
+/// Cấu hình EF Core cho bảng <c>departments</c>.
 /// </summary>
 public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Department>
 {
     public void Configure(EntityTypeBuilder<Department> builder)
     {
-        builder.ToTable("departments", "org", tb =>
+        builder.ToTable("departments", tb =>
         {
             tb.HasComment("Phòng ban / bộ phận / tổ nhóm dạng cây. Dùng cho Data Scope DEPARTMENT / DEPARTMENT_TREE");
             tb.HasCheckConstraint("departments_dept_type_check", "dept_type IN ('DIVISION','DEPARTMENT','TEAM','GROUP')");

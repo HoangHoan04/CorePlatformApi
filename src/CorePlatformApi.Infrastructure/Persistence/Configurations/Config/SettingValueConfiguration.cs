@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Config;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Config;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>config.setting_values</c>.
+/// Cấu hình EF Core cho bảng <c>setting_values</c>.
 /// </summary>
 public sealed class SettingValueConfiguration : IEntityTypeConfiguration<SettingValue>
 {
     public void Configure(EntityTypeBuilder<SettingValue> builder)
     {
-        builder.ToTable("setting_values", "config", tb =>
+        builder.ToTable("setting_values", tb =>
         {
             tb.HasComment("Giá trị cấu hình theo phạm vi. Thứ tự ưu tiên khi đọc: USER > BRANCH > COMPANY > TENANT > SYSTEM > default_value");
             tb.HasCheckConstraint("setting_values_scope_type_check", "scope_type IN ('SYSTEM','TENANT','COMPANY','BRANCH','USER')");
@@ -29,28 +29,28 @@ public sealed class SettingValueConfiguration : IEntityTypeConfiguration<Setting
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant (denormalize để cache theo tenant)");
         builder.Property(x => x.SettingKey)
             .HasColumnName("setting_key")
             .HasColumnType("varchar(200)")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Khóa cấu hình");
         builder.Property(x => x.ScopeType)
             .HasColumnName("scope_type")
             .HasColumnType("varchar(10)")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .IsRequired()
             .HasComment("Phạm vi");
         builder.Property(x => x.ScopeId)
             .HasColumnName("scope_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(3)
-            .HasComment("Id tenant/công ty/chi nhánh/user (NULL khi SYSTEM)");
-        builder.Property(x => x.TenantId)
-            .HasColumnName("tenant_id")
-            .HasColumnType("uuid")
             .HasColumnOrder(4)
-            .HasComment("Tenant (denormalize để cache theo tenant)");
+            .HasComment("Id tenant/công ty/chi nhánh/user (NULL khi SYSTEM)");
         builder.Property(x => x.Value)
             .HasColumnName("value")
             .HasColumnType("jsonb")
@@ -84,6 +84,24 @@ public sealed class SettingValueConfiguration : IEntityTypeConfiguration<Setting
             .HasColumnType("uuid")
             .HasColumnOrder(10)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(11)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(12)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(13)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.SettingKey, x.ScopeType, x.ScopeId }, "uq_setting_values")
             .IsUnique()
@@ -92,6 +110,7 @@ public sealed class SettingValueConfiguration : IEntityTypeConfiguration<Setting
         builder.HasOne(x => x.Setting)
             .WithMany(p => p.SettingValues)
             .HasForeignKey(x => x.SettingKey)
+            .HasPrincipalKey(p => p.Key)
             .HasConstraintName("setting_values_setting_key_fkey")
             .OnDelete(DeleteBehavior.Cascade);
     }

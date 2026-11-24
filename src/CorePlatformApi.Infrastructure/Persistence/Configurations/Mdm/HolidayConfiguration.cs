@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.holidays</c>.
+/// Cấu hình EF Core cho bảng <c>holidays</c>.
 /// </summary>
 public sealed class HolidayConfiguration : IEntityTypeConfiguration<Holiday>
 {
     public void Configure(EntityTypeBuilder<Holiday> builder)
     {
-        builder.ToTable("holidays", "mdm", tb =>
+        builder.ToTable("holidays", tb =>
         {
             tb.HasComment("Ngày lễ quốc gia (tenant_id NULL) và ngày lễ/nghỉ riêng của tenant");
             tb.HasCheckConstraint("holidays_holiday_type_check", "holiday_type IN ('PUBLIC','COMPENSATORY','COMPANY','OBSERVANCE')");
@@ -179,6 +179,7 @@ public sealed class HolidayConfiguration : IEntityTypeConfiguration<Holiday>
         builder.HasOne(x => x.Country)
             .WithMany()
             .HasForeignKey(x => x.CountryCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("holidays_country_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
     }

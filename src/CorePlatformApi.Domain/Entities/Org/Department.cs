@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Org;
 /// <summary>
 /// Phòng ban / bộ phận / tổ nhóm dạng cây. Dùng cho Data Scope DEPARTMENT / DEPARTMENT_TREE
 /// </summary>
-/// <remarks>Bảng <c>org.departments</c>.</remarks>
-public class Department : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>departments</c> (phân hệ org); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class Department : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Công ty
     /// </summary>

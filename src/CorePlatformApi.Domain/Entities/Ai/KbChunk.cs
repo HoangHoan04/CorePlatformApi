@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Ai;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Chunk văn bản + vector embedding (pgvector) + full-text để hybrid search
 /// </summary>
-/// <remarks>Bảng <c>ai.kb_chunks</c>.</remarks>
-public class KbChunk : IMustHaveTenant
+/// <remarks>Bảng <c>kb_chunks</c> (phân hệ ai).</remarks>
+public class KbChunk : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Tài liệu
     /// </summary>
@@ -26,11 +20,6 @@ public class KbChunk : IMustHaveTenant
     /// </summary>
     /// <remarks>FK → <c>ai.knowledge_bases(id)</c></remarks>
     public Guid KnowledgeBaseId { get; set; }
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Thứ tự chunk trong tài liệu
@@ -68,12 +57,6 @@ public class KbChunk : IMustHaveTenant
     /// </summary>
     /// <remarks>Kiểu DB <c>vector(1536)</c> (pgvector)</remarks>
     public float[]? Embedding { get; set; }
-
-    /// <summary>
-    /// Tạo lúc
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

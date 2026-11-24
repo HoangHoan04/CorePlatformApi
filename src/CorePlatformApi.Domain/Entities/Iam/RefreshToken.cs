@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using System.Net;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Refresh token có rotation: mỗi lần refresh sinh token mới cùng family; dùng lại token cũ → thu hồi cả family (phát hiện đánh cắp)
 /// </summary>
-/// <remarks>Bảng <c>iam.refresh_tokens</c>.</remarks>
-public class RefreshToken
+/// <remarks>Bảng <c>refresh_tokens</c> (phân hệ iam).</remarks>
+public class RefreshToken : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phiên
     /// </summary>

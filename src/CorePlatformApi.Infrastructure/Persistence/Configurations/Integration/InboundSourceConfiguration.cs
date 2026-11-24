@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Integration;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.inbound_sources</c>.
+/// Cấu hình EF Core cho bảng <c>inbound_sources</c>.
 /// </summary>
 public sealed class InboundSourceConfiguration : IEntityTypeConfiguration<InboundSource>
 {
     public void Configure(EntityTypeBuilder<InboundSource> builder)
     {
-        builder.ToTable("inbound_sources", "integration", tb =>
+        builder.ToTable("inbound_sources", tb =>
         {
             tb.HasComment("Nguồn webhook INBOUND: cổng thanh toán (VNPay, SePay, VietQR), sàn TMĐT, máy chấm công, hóa đơn điện tử");
             tb.HasCheckConstraint("inbound_sources_provider_check", "provider IN ('VNPAY','SEPAY','VIETQR','MOMO','PAYOS','SHOPEE','TIKTOK_SHOP','LAZADA','TIKI','ZALO_OA','ATTENDANCE_DEVICE','EINVOICE','BANK','CUSTOM')");

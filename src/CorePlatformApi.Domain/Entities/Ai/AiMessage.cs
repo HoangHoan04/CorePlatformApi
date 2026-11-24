@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Ai;
 
 /// <summary>
 /// Tin nhắn trong hội thoại, kèm trích dẫn chunk nguồn và đánh giá của người dùng
 /// </summary>
-/// <remarks>Bảng <c>ai.messages</c>.</remarks>
-public class AiMessage
+/// <remarks>Bảng <c>messages</c> (phân hệ ai).</remarks>
+public class AiMessage : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Hội thoại
     /// </summary>
@@ -60,12 +56,6 @@ public class AiMessage
     /// Góp ý
     /// </summary>
     public string? FeedbackNote { get; set; }
-
-    /// <summary>
-    /// Thời điểm
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

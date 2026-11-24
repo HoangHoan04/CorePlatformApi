@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
 namespace CorePlatformApi.Domain.Entities.Notify;
@@ -6,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Tùy chọn nhận thông báo của user theo sự kiện × kênh, giờ yên lặng
 /// </summary>
-/// <remarks>Bảng <c>notify.user_preferences</c>.</remarks>
-public class UserNotificationPreference
+/// <remarks>Bảng <c>user_preferences</c> (phân hệ notify).</remarks>
+public class UserNotificationPreference : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>
@@ -54,11 +49,6 @@ public class UserNotificationPreference
     /// </summary>
     /// <remarks>Ràng buộc: <c>digest_mode IN ('INSTANT','HOURLY','DAILY')</c>; Mặc định DB: <c>'INSTANT'</c></remarks>
     public string DigestMode { get; set; } = "INSTANT";
-
-    /// <summary>
-    /// Cập nhật lúc
-    /// </summary>
-    public DateTimeOffset? UpdatedAt { get; set; }
 
     #region Navigations
 

@@ -64,6 +64,21 @@ CLASS_OVERRIDES = {
     'mdm.uoms': 'Uom',
 }
 
+# Mọi bảng nằm chung schema public: bảng trùng tên giữa các phân hệ được thêm tiền tố phân hệ
+TABLE_RENAMES = {
+    'storage.providers': 'storage_providers',
+    'ai.providers': 'ai_providers',
+    'notify.event_types': 'notify_event_types',
+    'integration.event_types': 'integration_event_types',
+    'workflow.definitions': 'workflow_definitions',
+    'job.definitions': 'job_definitions',
+}
+
+# Cột trùng tên với thuộc tính của BaseEntity -> đổi tên thuộc tính C# (giữ nguyên tên cột DB)
+PROP_OVERRIDES = {
+    ('notify.templates', 'version'): 'TemplateVersion',
+}
+
 IRREGULAR_SINGULAR = {
     'aliases': 'alias', 'statuses': 'status', 'addresses': 'address', 'access': 'access',
     'daily': 'daily', 'data': 'data', 'policies': 'policy', 'histories': 'history',

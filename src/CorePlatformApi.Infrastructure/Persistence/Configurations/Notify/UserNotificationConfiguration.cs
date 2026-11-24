@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Notify;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Notify;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>notify.user_notifications</c>.
+/// Cấu hình EF Core cho bảng <c>user_notifications</c>.
 /// </summary>
 public sealed class UserNotificationConfiguration : IEntityTypeConfiguration<UserNotification>
 {
     public void Configure(EntityTypeBuilder<UserNotification> builder)
     {
-        builder.ToTable("user_notifications", "notify", tb =>
+        builder.ToTable("user_notifications", tb =>
         {
             tb.HasComment("Hộp thư thông báo in-app của từng user (thanh chuông). Đã render sẵn nội dung theo ngôn ngữ user");
             tb.HasCheckConstraint("user_notifications_category_check", "category IN ('INFO','TASK','APPROVAL','WARNING','SYSTEM')");
@@ -29,17 +29,17 @@ public sealed class UserNotificationConfiguration : IEntityTypeConfiguration<Use
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
-        builder.Property(x => x.NotificationId)
-            .HasColumnName("notification_id")
-            .HasColumnType("uuid")
-            .HasColumnOrder(1)
-            .IsRequired()
-            .HasComment("Thông báo gốc");
         builder.Property(x => x.TenantId)
             .HasColumnName("tenant_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(1)
             .HasComment("Tenant (denormalize)");
+        builder.Property(x => x.NotificationId)
+            .HasColumnName("notification_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Thông báo gốc");
         builder.Property(x => x.UserId)
             .HasColumnName("user_id")
             .HasColumnType("uuid")
@@ -117,6 +117,39 @@ public sealed class UserNotificationConfiguration : IEntityTypeConfiguration<Use
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Thời điểm nhận");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(16)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(17)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(18)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(19)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(20)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.UserId, x.CreatedAt }, "ix_user_notifications_inbox")
             .IsDescending(false, true)

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Ghi đè hạn mức rate limit cho tenant cụ thể (gói cao cấp được nhiều request hơn)
 /// </summary>
-/// <remarks>Bảng <c>gateway.tenant_rate_limits</c>.</remarks>
-public class TenantRateLimit : AuditableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>tenant_rate_limits</c> (phân hệ gateway).</remarks>
+public class TenantRateLimit : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Chính sách gốc
     /// </summary>

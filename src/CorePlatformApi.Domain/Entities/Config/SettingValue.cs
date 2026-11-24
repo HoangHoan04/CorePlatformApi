@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Config;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Giá trị cấu hình theo phạm vi. Thứ tự ưu tiên khi đọc: USER &gt; BRANCH &gt; COMPANY &gt; TENANT &gt; SYSTEM &gt; default_value
 /// </summary>
-/// <remarks>Bảng <c>config.setting_values</c>.</remarks>
-public class SettingValue : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>setting_values</c> (phân hệ config).</remarks>
+public class SettingValue : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Khóa cấu hình
     /// </summary>
@@ -31,11 +25,6 @@ public class SettingValue : AuditableEntity, IMayHaveTenant
     /// Id tenant/công ty/chi nhánh/user (NULL khi SYSTEM)
     /// </summary>
     public Guid? ScopeId { get; set; }
-
-    /// <summary>
-    /// Tenant (denormalize để cache theo tenant)
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Giá trị

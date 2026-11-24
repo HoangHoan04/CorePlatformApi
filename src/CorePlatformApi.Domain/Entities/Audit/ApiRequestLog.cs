@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using System.Net;
 
@@ -7,24 +7,13 @@ namespace CorePlatformApi.Domain.Entities.Audit;
 /// <summary>
 /// Log request đi qua API Gateway (thường đẩy song song sang Loki/ELK; bảng này giữ ngắn hạn để tra cứu nhanh theo traceId)
 /// </summary>
-/// <remarks>Bảng <c>audit.api_request_logs</c>; partition RANGE theo <c>occurred_at</c> (tạo bằng SQL thô, không qua EF migration).</remarks>
-public class ApiRequestLog : IMayHaveTenant
+/// <remarks>Bảng <c>api_request_logs</c> (phân hệ audit).</remarks>
+public class ApiRequestLog : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Trace id (trả về client qua header X-Trace-Id)
     /// </summary>
     public string TraceId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// User

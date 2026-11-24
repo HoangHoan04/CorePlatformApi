@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Khóa dịch dùng chung (nhãn UI, thông báo lỗi API) theo namespace
 /// </summary>
-/// <remarks>Bảng <c>config.translation_keys</c>.</remarks>
-public class TranslationKey : AuditableEntity
+/// <remarks>Bảng <c>translation_keys</c> (phân hệ config).</remarks>
+public class TranslationKey : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Nhóm: common, errors, validation, hrm, wms, crm
     /// </summary>

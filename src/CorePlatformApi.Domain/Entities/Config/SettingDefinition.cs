@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,8 +7,8 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Định nghĩa khóa cấu hình (kiểu dữ liệu, mặc định, phạm vi cho phép ghi đè) — thay cho hardcode
 /// </summary>
-/// <remarks>Bảng <c>config.setting_definitions</c>.</remarks>
-public class SettingDefinition : AuditableEntity
+/// <remarks>Bảng <c>setting_definitions</c> (phân hệ config).</remarks>
+public class SettingDefinition : BaseEntity
 {
     /// <summary>
     /// Khóa cấu hình (hrm.attendance.late_grace_minutes)

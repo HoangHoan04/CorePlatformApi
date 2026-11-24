@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Storage;
 using CorePlatformApi.Domain.Entities.Workflow;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Workflow;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>workflow.tasks</c>.
+/// Cấu hình EF Core cho bảng <c>tasks</c>.
 /// </summary>
 public sealed class WorkflowTaskConfiguration : IEntityTypeConfiguration<WorkflowTask>
 {
     public void Configure(EntityTypeBuilder<WorkflowTask> builder)
     {
-        builder.ToTable("tasks", "workflow", tb =>
+        builder.ToTable("tasks", tb =>
         {
             tb.HasComment("Nhiệm vụ duyệt giao cho từng người (danh sách \"Việc chờ tôi duyệt\")");
             tb.HasCheckConstraint("tasks_task_type_check", "task_type IN ('APPROVE','CONSULT','ACKNOWLEDGE')");
@@ -146,6 +146,39 @@ public sealed class WorkflowTaskConfiguration : IEntityTypeConfiguration<Workflo
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Giao lúc");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(20)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(23)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(24)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(25)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.AssigneeId, x.CreatedAt }, "ix_wf_tasks_inbox")
             .IsDescending(false, true)

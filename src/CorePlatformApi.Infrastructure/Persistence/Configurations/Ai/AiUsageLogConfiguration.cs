@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,21 +6,20 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.usage_logs</c>.
+/// Cấu hình EF Core cho bảng <c>usage_logs</c>.
 /// </summary>
 public sealed class AiUsageLogConfiguration : IEntityTypeConfiguration<AiUsageLog>
 {
     public void Configure(EntityTypeBuilder<AiUsageLog> builder)
     {
-        builder.ToTable("usage_logs", "ai", tb =>
+        builder.ToTable("usage_logs", tb =>
         {
             tb.HasComment("Log từng lần gọi AI: token, chi phí, độ trễ (không lưu nội dung prompt theo mặc định vì dữ liệu nhạy cảm)");
             tb.HasCheckConstraint("usage_logs_request_type_check", "request_type IN ('CHAT','EMBEDDING','RERANK','IMAGE','AUDIO','MODERATION')");
             tb.HasCheckConstraint("usage_logs_status_check", "status IN ('SUCCESS','ERROR','BLOCKED','QUOTA_EXCEEDED','TIMEOUT')");
-            tb.ExcludeFromMigrations(); // bảng partition: tạo bằng Sql/010_partitioned_tables.sql
         });
 
-        builder.HasKey(x => new { x.Id, x.CreatedAt }).HasName("usage_logs_pkey");
+        builder.HasKey(x => x.Id).HasName("usage_logs_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -176,6 +175,44 @@ public sealed class AiUsageLogConfiguration : IEntityTypeConfiguration<AiUsageLo
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Thời điểm gọi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(25)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(26)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(27)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(28)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(29)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(30)
+            .HasComment("Người xóa mềm (users.id)");
 
+        builder.HasIndex(x => new { x.Id, x.CreatedAt }, "usage_logs_id_created_at_key").IsUnique();
+        builder.HasIndex(x => new { x.TenantId, x.CreatedAt }, "ix_ai_usage_tenant")
+            .IsDescending(false, true);
+        builder.HasIndex(x => new { x.ModuleCode, x.CreatedAt }, "ix_ai_usage_module")
+            .IsDescending(false, true);
     }
 }

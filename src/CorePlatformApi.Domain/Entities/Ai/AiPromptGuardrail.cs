@@ -1,11 +1,13 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Ai;
 
 /// <summary>
 /// Gắn guardrail vào phiên bản prompt
 /// </summary>
-/// <remarks>Bảng <c>ai.prompt_guardrails</c>.</remarks>
-public class AiPromptGuardrail
+/// <remarks>Bảng <c>prompt_guardrails</c> (phân hệ ai).</remarks>
+public class AiPromptGuardrail : BaseEntity
 {
     /// <summary>
     /// Phiên bản prompt

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
@@ -9,13 +9,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Workflow;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>workflow.delegations</c>.
+/// Cấu hình EF Core cho bảng <c>delegations</c>.
 /// </summary>
 public sealed class WorkflowDelegationConfiguration : IEntityTypeConfiguration<WorkflowDelegation>
 {
     public void Configure(EntityTypeBuilder<WorkflowDelegation> builder)
     {
-        builder.ToTable("delegations", "workflow", tb =>
+        builder.ToTable("delegations", tb =>
         {
             tb.HasComment("Ủy quyền duyệt khi vắng mặt (đi công tác, nghỉ phép)");
             tb.HasCheckConstraint("delegations_scope_check", "scope IN ('ALL','MODULE','DOCUMENT_TYPE','DEFINITION')");
@@ -149,6 +149,24 @@ public sealed class WorkflowDelegationConfiguration : IEntityTypeConfiguration<W
             .HasColumnType("uuid")
             .HasColumnOrder(19)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(20)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.DelegatorId, x.StartAt, x.EndAt }, "ix_wf_delegations_active")
             .HasFilter("status = 'ACTIVE'");
@@ -171,6 +189,7 @@ public sealed class WorkflowDelegationConfiguration : IEntityTypeConfiguration<W
         builder.HasOne(x => x.DocumentType)
             .WithMany()
             .HasForeignKey(x => x.DocumentTypeCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("delegations_document_type_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Definition)

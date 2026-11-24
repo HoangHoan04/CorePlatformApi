@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Storage;
 
 /// <summary>
 /// Biến thể của file ảnh sau xử lý (thumbnail, small, medium, webp)
 /// </summary>
-/// <remarks>Bảng <c>storage.file_variants</c>.</remarks>
-public class FileVariant
+/// <remarks>Bảng <c>file_variants</c> (phân hệ storage).</remarks>
+public class FileVariant : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// File gốc
     /// </summary>
@@ -48,12 +44,6 @@ public class FileVariant
     /// Cao (px)
     /// </summary>
     public int? Height { get; set; }
-
-    /// <summary>
-    /// Thời điểm tạo
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

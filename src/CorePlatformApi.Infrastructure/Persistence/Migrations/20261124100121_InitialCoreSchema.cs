@@ -15,59 +15,88 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(
-                name: "workflow");
-
-            migrationBuilder.EnsureSchema(
-                name: "mdm");
-
-            migrationBuilder.EnsureSchema(
-                name: "integration");
-
-            migrationBuilder.EnsureSchema(
-                name: "iam");
-
-            migrationBuilder.EnsureSchema(
-                name: "audit");
-
-            migrationBuilder.EnsureSchema(
-                name: "org");
-
-            migrationBuilder.EnsureSchema(
-                name: "storage");
-
-            migrationBuilder.EnsureSchema(
-                name: "gateway");
-
-            migrationBuilder.EnsureSchema(
-                name: "ai");
-
-            migrationBuilder.EnsureSchema(
-                name: "job");
-
-            migrationBuilder.EnsureSchema(
-                name: "notify");
-
-            migrationBuilder.EnsureSchema(
-                name: "config");
-
-            migrationBuilder.EnsureSchema(
-                name: "monitor");
-
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:PostgresExtension:citext", ",,")
                 .Annotation("Npgsql:PostgresExtension:pg_trgm", ",,")
                 .Annotation("Npgsql:PostgresExtension:pgcrypto", ",,");
 
-            // Schema core + hàm tiện ích (set_updated_at, create_monthly_partitions)
+            // Hàm trigger set_updated_at()
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.CoreFunctions));
 
             migrationBuilder.CreateTable(
-                name: "audit_policies",
-                schema: "audit",
+                name: "ai_providers",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mã (OPENAI, GEMINI, ANTHROPIC, AZURE_OPENAI, OLLAMA, VLLM)"),
+                    name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Tên"),
+                    api_style = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Chuẩn API để chọn adapter"),
+                    base_url = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Base URL mặc định"),
+                    is_self_hosted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Model nội bộ (dữ liệu không rời hạ tầng)"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("ai_providers_pkey", x => x.id);
+                    table.CheckConstraint("ai_providers_api_style_check", "api_style IN ('OPENAI','ANTHROPIC','GEMINI','CUSTOM')");
+                },
+                comment: "Nhà cung cấp AI (OpenAI, Gemini, Anthropic, Azure OpenAI, model nội bộ qua Ollama/vLLM)");
+
+            migrationBuilder.CreateTable(
+                name: "api_request_logs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    trace_id = table.Column<string>(type: "varchar(64)", nullable: false, comment: "Trace id (trả về client qua header X-Trace-Id)"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User"),
+                    client_id = table.Column<string>(type: "varchar(100)", nullable: true, comment: "OAuth client"),
+                    api_key_prefix = table.Column<string>(type: "varchar(16)", nullable: true, comment: "API key (tiền tố)"),
+                    route_code = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Route khớp"),
+                    module_code = table.Column<string>(type: "varchar(30)", nullable: true, comment: "Phân hệ"),
+                    http_method = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Method"),
+                    path = table.Column<string>(type: "varchar(2000)", nullable: false, comment: "Path"),
+                    query_string = table.Column<string>(type: "text", nullable: true, comment: "Query (đã che tham số nhạy cảm)"),
+                    status_code = table.Column<short>(type: "smallint", nullable: false, comment: "HTTP status"),
+                    error_code = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Mã lỗi chuẩn (gateway.error_codes)"),
+                    duration_ms = table.Column<int>(type: "int", nullable: false, comment: "Thời gian xử lý"),
+                    upstream_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian upstream"),
+                    request_bytes = table.Column<int>(type: "int", nullable: true, comment: "Kích thước request"),
+                    response_bytes = table.Column<int>(type: "int", nullable: true, comment: "Kích thước response"),
+                    ip_address = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP client"),
+                    user_agent = table.Column<string>(type: "text", nullable: true, comment: "User-Agent"),
+                    is_rate_limited = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Bị chặn rate limit"),
+                    occurred_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("api_request_logs_pkey", x => x.id);
+                },
+                comment: "Log request đi qua API Gateway (thường đẩy song song sang Loki/ELK; bảng này giữ ngắn hạn để tra cứu nhanh theo traceId)");
+
+            migrationBuilder.CreateTable(
+                name: "audit_policies",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     module_code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Phân hệ"),
                     entity_type = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Loại đối tượng (EMPLOYEE, SALARY, STOCK_ADJUSTMENT)"),
                     is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Bật lưu vết"),
@@ -80,6 +109,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -90,9 +122,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "countries",
-                schema: "mdm",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "char(2)", nullable: false, comment: "Mã ISO 3166-1 alpha-2 (VN, US, JP...)"),
                     alpha3_code = table.Column<string>(type: "char(3)", nullable: false, comment: "Mã ISO alpha-3 (VNM, USA...)"),
                     numeric_code = table.Column<string>(type: "char(3)", nullable: true, comment: "Mã số ISO (704 = Việt Nam)"),
@@ -107,19 +140,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("countries_pkey", x => x.code);
+                    table.PrimaryKey("countries_pkey", x => x.id);
+                    table.UniqueConstraint("countries_code_key", x => x.code);
                 },
                 comment: "Danh mục quốc gia theo chuẩn ISO 3166");
 
             migrationBuilder.CreateTable(
                 name: "currencies",
-                schema: "mdm",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "char(3)", nullable: false, comment: "Mã ISO 4217 (VND, USD, EUR...)"),
                     numeric_code = table.Column<string>(type: "char(3)", nullable: true, comment: "Mã số ISO (704 = VND)"),
                     name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên tiền tệ (Đồng Việt Nam)"),
@@ -133,40 +171,152 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("currencies_pkey", x => x.code);
+                    table.PrimaryKey("currencies_pkey", x => x.id);
+                    table.UniqueConstraint("currencies_code_key", x => x.code);
                     table.CheckConstraint("currencies_symbol_position_check", "symbol_position IN ('PREFIX','SUFFIX')");
                 },
                 comment: "Danh mục tiền tệ theo ISO 4217");
 
             migrationBuilder.CreateTable(
-                name: "inbox_messages",
-                schema: "integration",
+                name: "data_change_logs",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    company_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Công ty (lọc theo data scope)"),
+                    module_code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Phân hệ"),
+                    entity_type = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Loại đối tượng"),
+                    entity_id = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Id đối tượng (text để hỗ trợ khóa không phải uuid)"),
+                    entity_display = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Tên/mã hiển thị (NV-2026-0001 - Nguyễn Văn A)"),
+                    action = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Hành động"),
+                    changed_fields = table.Column<List<string>>(type: "text[]", nullable: true, comment: "Danh sách trường thay đổi"),
+                    old_values = table.Column<string>(type: "jsonb", nullable: true, comment: "Giá trị cũ {field: value}"),
+                    new_values = table.Column<string>(type: "jsonb", nullable: true, comment: "Giá trị mới {field: value}"),
+                    reason = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Lý do thay đổi (bắt buộc với một số nghiệp vụ)"),
+                    changed_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người thay đổi"),
+                    changed_by_name = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Tên người thay đổi (snapshot)"),
+                    on_behalf_of = table.Column<Guid>(type: "uuid", nullable: true, comment: "Thay mặt (impersonation)"),
+                    source = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'WEB'", comment: "Nguồn thay đổi"),
+                    ip_address = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP"),
+                    trace_id = table.Column<string>(type: "varchar(64)", nullable: true, comment: "Trace id liên kết request"),
+                    changed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("data_change_logs_pkey", x => x.id);
+                    table.CheckConstraint("data_change_logs_action_check", "action IN ('INSERT','UPDATE','DELETE','RESTORE','APPROVE','EXPORT')");
+                    table.CheckConstraint("data_change_logs_source_check", "source IN ('WEB','MOBILE','API','IMPORT','JOB','WORKFLOW','SYSTEM')");
+                },
+                comment: "Lịch sử thay đổi dữ liệu nhạy cảm (old/new value) phục vụ đối soát kế toán, kho, nhân sự. Các phân hệ gửi qua event hoặc ghi trực tiếp");
+
+            migrationBuilder.CreateTable(
+                name: "file_access_logs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    file_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "File"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người truy cập (NULL nếu qua share link)"),
+                    share_link_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Link chia sẻ được dùng"),
+                    action = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Hành động"),
+                    ip_address = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP"),
+                    user_agent = table.Column<string>(type: "text", nullable: true, comment: "User-Agent"),
+                    occurred_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("file_access_logs_pkey", x => x.id);
+                    table.CheckConstraint("file_access_logs_action_check", "action IN ('VIEW','DOWNLOAD','PRESIGN','DELETE','SHARE')");
+                },
+                comment: "Nhật ký truy cập file nhạy cảm (xem, tải, cấp presigned URL) phục vụ kiểm toán");
+
+            migrationBuilder.CreateTable(
+                name: "health_checks",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    service_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Service"),
+                    status = table.Column<string>(type: "varchar(15)", nullable: false, comment: "Kết quả"),
+                    http_status = table.Column<short>(type: "smallint", nullable: true, comment: "HTTP status"),
+                    response_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian phản hồi"),
+                    details = table.Column<string>(type: "jsonb", nullable: true, comment: "Chi tiết từng dependency (db, redis, rabbitmq) trả về từ /health"),
+                    error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi"),
+                    checked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("health_checks_pkey", x => x.id);
+                    table.CheckConstraint("health_checks_status_check", "status IN ('HEALTHY','DEGRADED','UNHEALTHY')");
+                },
+                comment: "Kết quả từng lần health check");
+
+            migrationBuilder.CreateTable(
+                name: "inbox_messages",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     consumer_service = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Service tiêu thụ"),
                     message_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Message id"),
                     event_type_code = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Mã event"),
                     status = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'PROCESSED'", comment: "Trạng thái"),
                     error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi"),
                     received_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Nhận lúc"),
-                    processed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Xử lý xong lúc")
+                    processed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Xử lý xong lúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("inbox_messages_pkey", x => new { x.consumer_service, x.message_id });
+                    table.PrimaryKey("inbox_messages_pkey", x => x.id);
                     table.CheckConstraint("inbox_messages_status_check", "status IN ('PROCESSING','PROCESSED','FAILED')");
                 },
                 comment: "Inbox/Idempotency: consumer ghi nhận message đã xử lý để không xử lý trùng");
 
             migrationBuilder.CreateTable(
                 name: "languages",
-                schema: "config",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Mã BCP-47 (vi-VN, en-US)"),
                     name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên tiếng Việt"),
                     native_name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên bản ngữ (Tiếng Việt, English)"),
@@ -180,21 +330,61 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("languages_pkey", x => x.code);
+                    table.PrimaryKey("languages_pkey", x => x.id);
+                    table.UniqueConstraint("languages_code_key", x => x.code);
                     table.CheckConstraint("languages_direction_check", "direction IN ('LTR','RTL')");
                 },
                 comment: "Ngôn ngữ hệ thống hỗ trợ");
 
             migrationBuilder.CreateTable(
-                name: "modules",
-                schema: "iam",
+                name: "login_logs",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User (NULL nếu username không tồn tại)"),
+                    username_attempted = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Username/email đã nhập"),
+                    event_type = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Sự kiện"),
+                    failure_reason = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Lý do thất bại (INVALID_PASSWORD, USER_NOT_FOUND, ACCOUNT_LOCKED, IP_NOT_ALLOWED, DEVICE_LIMIT)"),
+                    auth_method = table.Column<string>(type: "varchar(30)", nullable: true, comment: "Phương thức (PASSWORD, GOOGLE, OTP)"),
+                    client_id = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Ứng dụng"),
+                    session_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phiên tạo ra"),
+                    device_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Thiết bị"),
+                    ip_address = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP"),
+                    user_agent = table.Column<string>(type: "text", nullable: true, comment: "User-Agent"),
+                    geo_country = table.Column<string>(type: "varchar(2)", nullable: true, comment: "Quốc gia (GeoIP)"),
+                    geo_city = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Thành phố (GeoIP)"),
+                    is_suspicious = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đánh dấu bất thường (IP lạ, quốc gia lạ)"),
+                    occurred_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("login_logs_pkey", x => x.id);
+                    table.CheckConstraint("login_logs_event_type_check", "event_type IN ('LOGIN_SUCCESS','LOGIN_FAILED','LOGOUT','TOKEN_REFRESH','TOKEN_REUSE_DETECTED','MFA_SUCCESS','MFA_FAILED','ACCOUNT_LOCKED','SSO_LOGIN','IMPERSONATE')");
+                },
+                comment: "Lịch sử đăng nhập/đăng xuất/refresh token (thành công & thất bại) kèm IP, thiết bị");
+
+            migrationBuilder.CreateTable(
+                name: "modules",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mã phân hệ (CORE, HRM, CRM, WMS, AI)"),
                     name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Tên phân hệ"),
                     description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
@@ -209,6 +399,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -219,7 +412,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "outbox_messages",
-                schema: "integration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Message id (dùng làm idempotency key phía consumer)"),
@@ -235,7 +427,15 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     next_attempt_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần thử tiếp"),
                     last_error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi gần nhất"),
                     occurred_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm sự kiện xảy ra"),
-                    published_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Publish thành công lúc")
+                    published_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Publish thành công lúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -246,9 +446,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "permission_actions",
-                schema: "iam",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mã hành động"),
                     name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên hiển thị (Xem, Thêm, Sửa...)"),
                     sort_order = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Thứ tự hiển thị trên ma trận phân quyền"),
@@ -256,45 +457,24 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("permission_actions_pkey", x => x.code);
+                    table.PrimaryKey("permission_actions_pkey", x => x.id);
+                    table.UniqueConstraint("permission_actions_code_key", x => x.code);
                 },
                 comment: "Danh mục hành động chuẩn (VIEW, CREATE, UPDATE, DELETE, APPROVE, EXPORT, IMPORT, PRINT...)");
 
             migrationBuilder.CreateTable(
-                name: "providers",
-                schema: "ai",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mã (OPENAI, GEMINI, ANTHROPIC, AZURE_OPENAI, OLLAMA, VLLM)"),
-                    name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Tên"),
-                    api_style = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Chuẩn API để chọn adapter"),
-                    base_url = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Base URL mặc định"),
-                    is_self_hosted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Model nội bộ (dữ liệu không rời hạ tầng)"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("providers_pkey", x => x.id);
-                    table.CheckConstraint("providers_api_style_check", "api_style IN ('OPENAI','ANTHROPIC','GEMINI','CUSTOM')");
-                },
-                comment: "Nhà cung cấp AI (OpenAI, Gemini, Anthropic, Azure OpenAI, model nội bộ qua Ollama/vLLM)");
-
-            migrationBuilder.CreateTable(
                 name: "rate_limit_policies",
-                schema: "gateway",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã chính sách (default-user, login-strict, partner-basic)"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên"),
                     partition_by = table.Column<string>(type: "varchar(15)", nullable: false, comment: "Đếm theo khóa nào"),
@@ -310,6 +490,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -323,28 +506,71 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "revoked_access_tokens",
-                schema: "iam",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     jti = table.Column<string>(type: "varchar(100)", nullable: false, comment: "JWT ID"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User"),
                     session_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phiên"),
                     expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, comment: "Hết hạn gốc của token (sau thời điểm này xóa bản ghi)"),
                     revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thu hồi lúc"),
-                    reason = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Lý do")
+                    reason = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Lý do"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("revoked_access_tokens_pkey", x => x.jti);
+                    table.PrimaryKey("revoked_access_tokens_pkey", x => x.id);
                 },
                 comment: "Danh sách đen access token (jti) bị thu hồi trước hạn. Bản chính nên ở Redis; bảng này để khôi phục khi Redis mất dữ liệu");
 
             migrationBuilder.CreateTable(
-                name: "security_header_policies",
-                schema: "gateway",
+                name: "security_events",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    event_type = table.Column<string>(type: "varchar(40)", nullable: false, comment: "Loại (PASSWORD_CHANGED, PASSWORD_RESET, USER_LOCKED, USER_UNLOCKED, ROLE_ASSIGNED, ROLE_REVOKED, ROLE_PERMISSION_CHANGED, MFA_ENABLED, API_KEY_CREATED, SESSION_REVOKED...)"),
+                    severity = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'INFO'", comment: "Mức độ"),
+                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người thực hiện (NULL = hệ thống)"),
+                    target_user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User bị tác động"),
+                    target_type = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Loại đối tượng bị tác động (ROLE, API_KEY, OAUTH_CLIENT)"),
+                    target_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Id đối tượng"),
+                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả dễ đọc"),
+                    details = table.Column<string>(type: "jsonb", nullable: true, comment: "Chi tiết (quyền thêm/bớt, vai trò cũ/mới)"),
+                    ip_address = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP"),
+                    user_agent = table.Column<string>(type: "text", nullable: true, comment: "User-Agent"),
+                    trace_id = table.Column<string>(type: "varchar(64)", nullable: true, comment: "Trace id"),
+                    occurred_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("security_events_pkey", x => x.id);
+                    table.CheckConstraint("security_events_severity_check", "severity IN ('INFO','WARNING','CRITICAL')");
+                },
+                comment: "Sự kiện bảo mật quan trọng: đổi/reset mật khẩu, khóa/mở khóa, thay đổi vai trò/quyền, cấp API key, bật/tắt 2FA");
+
+            migrationBuilder.CreateTable(
+                name: "security_header_policies",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã chính sách (default, strict-admin)"),
                     headers = table.Column<string>(type: "jsonb", nullable: false, comment: "Map header → giá trị, VD: {\"Strict-Transport-Security\":\"max-age=31536000; includeSubDomains\"}"),
                     remove_headers = table.Column<List<string>>(type: "text[]", nullable: false, defaultValueSql: "'{Server,X-Powered-By}'", comment: "Header cần gỡ khỏi response"),
@@ -353,6 +579,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -363,10 +592,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "signing_keys",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     kid = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Key ID (header kid trong JWT)"),
                     algorithm = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'RS256'", comment: "Thuật toán ký"),
                     usage = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'SIGNING'", comment: "Mục đích"),
@@ -376,7 +605,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     activated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Bắt đầu ký"),
                     retired_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Ngừng ký"),
                     expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Gỡ khỏi JWKS sau thời điểm này"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -389,9 +625,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "tax_types",
-                schema: "mdm",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Mã loại thuế (VAT, CIT, PIT, IMPORT, SCT)"),
                     name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Tên loại thuế"),
                     description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
@@ -400,26 +637,33 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("tax_types_pkey", x => x.code);
+                    table.PrimaryKey("tax_types_pkey", x => x.id);
+                    table.UniqueConstraint("tax_types_code_key", x => x.code);
                 },
                 comment: "Loại thuế (GTGT, TNDN, TNCN, Nhập khẩu, Tiêu thụ đặc biệt...)");
 
             migrationBuilder.CreateTable(
                 name: "uom_categories",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mã nhóm (COUNT, WEIGHT, VOLUME, LENGTH, AREA, TIME)"),
                     name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên nhóm"),
                     created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -430,11 +674,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "usage_daily",
-                schema: "ai",
                 columns: table => new
                 {
-                    usage_date = table.Column<DateOnly>(type: "date", nullable: false, comment: "Ngày"),
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
+                    usage_date = table.Column<DateOnly>(type: "date", nullable: false, comment: "Ngày"),
                     module_code = table.Column<string>(type: "varchar(30)", nullable: false, defaultValueSql: "'-'", comment: "Phân hệ ('-' nếu không xác định)"),
                     model_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Model"),
                     request_count = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Số request"),
@@ -442,20 +686,111 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     input_tokens = table.Column<long>(type: "bigint", nullable: false, defaultValueSql: "0", comment: "Tổng token vào"),
                     output_tokens = table.Column<long>(type: "bigint", nullable: false, defaultValueSql: "0", comment: "Tổng token ra"),
                     cost_usd = table.Column<decimal>(type: "numeric(14,6)", nullable: false, defaultValueSql: "0", comment: "Tổng chi phí"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Cập nhật lúc")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Cập nhật lúc"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("usage_daily_pkey", x => new { x.usage_date, x.tenant_id, x.module_code, x.model_id });
+                    table.PrimaryKey("usage_daily_pkey", x => x.id);
                 },
                 comment: "Tổng hợp usage theo ngày (job cộng dồn từ usage_logs) — dùng kiểm tra quota nhanh và báo cáo chi phí");
 
             migrationBuilder.CreateTable(
-                name: "administrative_units",
-                schema: "mdm",
+                name: "usage_logs",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    module_code = table.Column<string>(type: "varchar(30)", nullable: true, comment: "Phân hệ gọi"),
+                    gateway_client_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Client nội bộ"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User cuối"),
+                    prompt_template_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Prompt"),
+                    prompt_version_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phiên bản prompt"),
+                    alias_code = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Alias được yêu cầu"),
+                    model_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Model thực tế phục vụ"),
+                    credential_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Key provider đã dùng"),
+                    request_type = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'CHAT'", comment: "Loại request"),
+                    input_tokens = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Token đầu vào"),
+                    output_tokens = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Token đầu ra"),
+                    cached_tokens = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Token đọc từ cache"),
+                    total_tokens = table.Column<int>(type: "int", nullable: true, computedColumnSql: "input_tokens + output_tokens", stored: true, comment: "Tổng token"),
+                    estimated_cost_usd = table.Column<decimal>(type: "numeric(14,8)", nullable: false, defaultValueSql: "0", comment: "Chi phí ước tính (USD)"),
+                    latency_ms = table.Column<int>(type: "int", nullable: true, comment: "Độ trễ tổng"),
+                    time_to_first_token_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian tới token đầu (streaming)"),
+                    is_fallback = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Phục vụ bởi model fallback"),
+                    is_cache_hit = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Trả về từ semantic cache"),
+                    status = table.Column<string>(type: "varchar(15)", nullable: false, comment: "Kết quả"),
+                    error_code = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Mã lỗi"),
+                    guardrail_codes = table.Column<List<string>>(type: "text[]", nullable: true, comment: "Guardrail đã kích hoạt"),
+                    trace_id = table.Column<string>(type: "varchar(64)", nullable: true, comment: "Trace id"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm gọi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("usage_logs_pkey", x => x.id);
+                    table.CheckConstraint("usage_logs_request_type_check", "request_type IN ('CHAT','EMBEDDING','RERANK','IMAGE','AUDIO','MODERATION')");
+                    table.CheckConstraint("usage_logs_status_check", "status IN ('SUCCESS','ERROR','BLOCKED','QUOTA_EXCEEDED','TIMEOUT')");
+                },
+                comment: "Log từng lần gọi AI: token, chi phí, độ trễ (không lưu nội dung prompt theo mặc định vì dữ liệu nhạy cảm)");
+
+            migrationBuilder.CreateTable(
+                name: "models",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    provider_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Nhà cung cấp"),
+                    model_code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã model gửi lên API"),
+                    display_name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Tên hiển thị"),
+                    capabilities = table.Column<List<string>>(type: "text[]", nullable: false, defaultValueSql: "'{CHAT}'", comment: "Năng lực: CHAT, VISION, TOOLS, JSON_MODE, EMBEDDING, RERANK, AUDIO, IMAGE_GEN"),
+                    context_window = table.Column<int>(type: "int", nullable: true, comment: "Số token ngữ cảnh tối đa"),
+                    max_output_tokens = table.Column<int>(type: "int", nullable: true, comment: "Số token đầu ra tối đa"),
+                    embedding_dimension = table.Column<int>(type: "int", nullable: true, comment: "Số chiều vector (model embedding)"),
+                    input_price_per_1m = table.Column<decimal>(type: "numeric(12,6)", nullable: true, comment: "Giá input / 1 triệu token (USD)"),
+                    output_price_per_1m = table.Column<decimal>(type: "numeric(12,6)", nullable: true, comment: "Giá output / 1 triệu token (USD)"),
+                    cached_input_price_per_1m = table.Column<decimal>(type: "numeric(12,6)", nullable: true, comment: "Giá input cache / 1 triệu token"),
+                    price_currency = table.Column<string>(type: "char(3)", nullable: false, defaultValueSql: "'USD'", comment: "Tiền tệ bảng giá"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
+                    deprecated_at = table.Column<DateOnly>(type: "date", nullable: true, comment: "Ngày provider ngừng hỗ trợ"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("models_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "models_provider_id_fkey",
+                        column: x => x.provider_id,
+                        principalTable: "ai_providers",
+                        principalColumn: "id");
+                },
+                comment: "Model AI và bảng giá để ước tính chi phí");
+
+            migrationBuilder.CreateTable(
+                name: "administrative_units",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     country_code = table.Column<string>(type: "char(2)", nullable: false, comment: "Quốc gia"),
                     parent_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Đơn vị cấp trên (NULL nếu là cấp tỉnh)"),
                     code = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Mã đơn vị hành chính (mã GSO/Tổng cục Thống kê)"),
@@ -477,6 +812,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -487,13 +825,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "administrative_units_country_code_fkey",
                         column: x => x.country_code,
-                        principalSchema: "mdm",
                         principalTable: "countries",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "administrative_units_parent_id_fkey",
                         column: x => x.parent_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                 },
@@ -501,10 +837,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "banks",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     country_code = table.Column<string>(type: "char(2)", nullable: false, defaultValueSql: "'VN'", comment: "Quốc gia"),
                     code = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Mã viết tắt (VCB, TCB, MB...)"),
                     bin = table.Column<string>(type: "varchar(10)", nullable: true, comment: "Mã BIN NAPAS dùng tạo VietQR (970436...)"),
@@ -518,6 +854,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -526,7 +865,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "banks_country_code_fkey",
                         column: x => x.country_code,
-                        principalSchema: "mdm",
                         principalTable: "countries",
                         principalColumn: "code");
                 },
@@ -534,9 +872,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "api_scopes",
-                schema: "iam",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã scope (hrm.employee.read)"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên hiển thị"),
@@ -546,15 +885,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("api_scopes_pkey", x => x.code);
+                    table.PrimaryKey("api_scopes_pkey", x => x.id);
                     table.ForeignKey(
                         name: "api_scopes_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
@@ -562,10 +903,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "clusters",
-                schema: "gateway",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã cluster (hrm-api, wms-api, auth-api)"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
                     load_balancing = table.Column<string>(type: "varchar(20)", nullable: false, defaultValueSql: "'ROUND_ROBIN'", comment: "Thuật toán cân bằng tải"),
@@ -578,6 +919,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -587,18 +931,166 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "clusters_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
                 comment: "Cụm upstream (service nội bộ) mà gateway định tuyến tới");
 
             migrationBuilder.CreateTable(
-                name: "definitions",
-                schema: "job",
+                name: "document_types",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã loại chứng từ (HRM_EMPLOYEE, HRM_LEAVE_REQUEST, WMS_GOODS_RECEIPT, CRM_QUOTATION)"),
+                    module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ sở hữu"),
+                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên loại chứng từ"),
+                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
+                    entity_table = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Bảng dữ liệu gốc bên phân hệ (tham khảo)"),
+                    supports_workflow = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Có thể gắn quy trình duyệt"),
+                    supports_numbering = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Có sinh mã tự động"),
+                    supports_attachment = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Cho phép đính kèm file"),
+                    workflow_variables = table.Column<string>(type: "jsonb", nullable: true, comment: "Khai báo biến dùng trong điều kiện rẽ nhánh, VD: [{\"name\":\"amount\",\"type\":\"number\",\"label\":\"Tổng tiền\"}]"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("document_types_pkey", x => x.id);
+                    table.UniqueConstraint("document_types_code_key", x => x.code);
+                    table.ForeignKey(
+                        name: "document_types_module_id_fkey",
+                        column: x => x.module_id,
+                        principalTable: "modules",
+                        principalColumn: "id");
+                },
+                comment: "Danh mục loại chứng từ/đối tượng nghiệp vụ toàn hệ sinh thái — khóa chung để gắn sinh mã, workflow, file, thông báo");
+
+            migrationBuilder.CreateTable(
+                name: "error_codes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã lỗi (AUTH_TOKEN_EXPIRED, HRM_LEAVE_BALANCE_INSUFFICIENT)"),
+                    module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
+                    http_status = table.Column<short>(type: "smallint", nullable: false, comment: "HTTP status tương ứng"),
+                    category = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Nhóm lỗi"),
+                    message_key = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Khóa i18n của thông báo (config.translation_keys)"),
+                    default_message = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Thông báo mặc định tiếng Việt"),
+                    description = table.Column<string>(type: "text", nullable: true, comment: "Giải thích cho dev / hướng xử lý"),
+                    is_retryable = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Client có nên thử lại"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("error_codes_pkey", x => x.id);
+                    table.CheckConstraint("error_codes_category_check", "category IN ('VALIDATION','AUTHENTICATION','AUTHORIZATION','NOT_FOUND','CONFLICT','BUSINESS','RATE_LIMIT','INTEGRATION','SYSTEM')");
+                    table.CheckConstraint("error_codes_http_status_check", "http_status BETWEEN 400 AND 599");
+                    table.ForeignKey(
+                        name: "error_codes_module_id_fkey",
+                        column: x => x.module_id,
+                        principalTable: "modules",
+                        principalColumn: "id");
+                },
+                comment: "Mã lỗi chuẩn hóa toàn hệ sinh thái. Response lỗi: {success:false, code, message, traceId, errors[]}");
+
+            migrationBuilder.CreateTable(
+                name: "feature_flags",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    key = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Khóa flag (wms.pos.offline_mode)"),
+                    module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
+                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên"),
+                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
+                    flag_type = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'BOOLEAN'", comment: "Bật/tắt, theo % rollout, theo biến thể"),
+                    default_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Mặc định khi không có rule khớp"),
+                    variants = table.Column<string>(type: "jsonb", nullable: true, comment: "Danh sách biến thể (VARIANT)"),
+                    is_kill_switch = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Công tắc khẩn cấp tắt tính năng toàn hệ thống"),
+                    owner = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Người/team phụ trách"),
+                    remove_after = table.Column<DateOnly>(type: "date", nullable: true, comment: "Hạn dọn flag khỏi code"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Flag còn được đánh giá"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("feature_flags_pkey", x => x.id);
+                    table.UniqueConstraint("feature_flags_key_key", x => x.key);
+                    table.CheckConstraint("feature_flags_flag_type_check", "flag_type IN ('BOOLEAN','PERCENTAGE','VARIANT')");
+                    table.ForeignKey(
+                        name: "feature_flags_module_id_fkey",
+                        column: x => x.module_id,
+                        principalTable: "modules",
+                        principalColumn: "id");
+                },
+                comment: "Feature flag bật/tắt tính năng không cần deploy");
+
+            migrationBuilder.CreateTable(
+                name: "integration_event_types",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã event (domain.entity.action)"),
+                    module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ phát (producer)"),
+                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên event"),
+                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
+                    schema_version = table.Column<int>(type: "int", nullable: false, defaultValueSql: "1", comment: "Phiên bản schema payload"),
+                    payload_schema = table.Column<string>(type: "jsonb", nullable: true, comment: "JSON Schema của payload (validate + sinh tài liệu)"),
+                    exchange_name = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Exchange/stream trên RabbitMQ/Redis Streams"),
+                    routing_key = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Routing key"),
+                    is_public = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cho phép đối tác đăng ký qua webhook"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("integration_event_types_pkey", x => x.id);
+                    table.UniqueConstraint("integration_event_types_code_key", x => x.code);
+                    table.ForeignKey(
+                        name: "integration_event_types_module_id_fkey",
+                        column: x => x.module_id,
+                        principalTable: "modules",
+                        principalColumn: "id");
+                },
+                comment: "Danh mục event nghiệp vụ trao đổi giữa các phân hệ (crm.order.confirmed, hrm.payroll.closed...) kèm schema payload");
+
+            migrationBuilder.CreateTable(
+                name: "job_definitions",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã job (core.storage.cleanup_temp_files)"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ sở hữu"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên"),
@@ -623,125 +1115,28 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("definitions_pkey", x => x.id);
+                    table.PrimaryKey("job_definitions_pkey", x => x.id);
                     table.ForeignKey(
-                        name: "definitions_module_id_fkey",
+                        name: "job_definitions_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
                 comment: "Danh mục job định kỳ toàn hệ thống (chốt công cuối ngày, cảnh báo tồn kho, dọn file rác, đồng bộ tỷ giá...)");
 
             migrationBuilder.CreateTable(
-                name: "document_types",
-                schema: "mdm",
-                columns: table => new
-                {
-                    code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã loại chứng từ (HRM_EMPLOYEE, HRM_LEAVE_REQUEST, WMS_GOODS_RECEIPT, CRM_QUOTATION)"),
-                    module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ sở hữu"),
-                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên loại chứng từ"),
-                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
-                    entity_table = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Bảng dữ liệu gốc bên phân hệ (tham khảo)"),
-                    supports_workflow = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Có thể gắn quy trình duyệt"),
-                    supports_numbering = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Có sinh mã tự động"),
-                    supports_attachment = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Cho phép đính kèm file"),
-                    workflow_variables = table.Column<string>(type: "jsonb", nullable: true, comment: "Khai báo biến dùng trong điều kiện rẽ nhánh, VD: [{\"name\":\"amount\",\"type\":\"number\",\"label\":\"Tổng tiền\"}]"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("document_types_pkey", x => x.code);
-                    table.ForeignKey(
-                        name: "document_types_module_id_fkey",
-                        column: x => x.module_id,
-                        principalSchema: "iam",
-                        principalTable: "modules",
-                        principalColumn: "id");
-                },
-                comment: "Danh mục loại chứng từ/đối tượng nghiệp vụ toàn hệ sinh thái — khóa chung để gắn sinh mã, workflow, file, thông báo");
-
-            migrationBuilder.CreateTable(
-                name: "error_codes",
-                schema: "gateway",
-                columns: table => new
-                {
-                    code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã lỗi (AUTH_TOKEN_EXPIRED, HRM_LEAVE_BALANCE_INSUFFICIENT)"),
-                    module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
-                    http_status = table.Column<short>(type: "smallint", nullable: false, comment: "HTTP status tương ứng"),
-                    category = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Nhóm lỗi"),
-                    message_key = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Khóa i18n của thông báo (config.translation_keys)"),
-                    default_message = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Thông báo mặc định tiếng Việt"),
-                    description = table.Column<string>(type: "text", nullable: true, comment: "Giải thích cho dev / hướng xử lý"),
-                    is_retryable = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Client có nên thử lại"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("error_codes_pkey", x => x.code);
-                    table.CheckConstraint("error_codes_category_check", "category IN ('VALIDATION','AUTHENTICATION','AUTHORIZATION','NOT_FOUND','CONFLICT','BUSINESS','RATE_LIMIT','INTEGRATION','SYSTEM')");
-                    table.CheckConstraint("error_codes_http_status_check", "http_status BETWEEN 400 AND 599");
-                    table.ForeignKey(
-                        name: "error_codes_module_id_fkey",
-                        column: x => x.module_id,
-                        principalSchema: "iam",
-                        principalTable: "modules",
-                        principalColumn: "id");
-                },
-                comment: "Mã lỗi chuẩn hóa toàn hệ sinh thái. Response lỗi: {success:false, code, message, traceId, errors[]}");
-
-            migrationBuilder.CreateTable(
-                name: "event_types",
-                schema: "integration",
-                columns: table => new
-                {
-                    code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã event (domain.entity.action)"),
-                    module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ phát (producer)"),
-                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên event"),
-                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
-                    schema_version = table.Column<int>(type: "int", nullable: false, defaultValueSql: "1", comment: "Phiên bản schema payload"),
-                    payload_schema = table.Column<string>(type: "jsonb", nullable: true, comment: "JSON Schema của payload (validate + sinh tài liệu)"),
-                    exchange_name = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Exchange/stream trên RabbitMQ/Redis Streams"),
-                    routing_key = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Routing key"),
-                    is_public = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cho phép đối tác đăng ký qua webhook"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("event_types_pkey", x => x.code);
-                    table.ForeignKey(
-                        name: "event_types_module_id_fkey",
-                        column: x => x.module_id,
-                        principalSchema: "iam",
-                        principalTable: "modules",
-                        principalColumn: "id");
-                },
-                comment: "Danh mục event nghiệp vụ trao đổi giữa các phân hệ (crm.order.confirmed, hrm.payroll.closed...) kèm schema payload");
-
-            migrationBuilder.CreateTable(
-                name: "event_types",
-                schema: "notify",
+                name: "notify_event_types",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ phát sinh"),
                     code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã sự kiện"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên hiển thị trong cài đặt thông báo"),
@@ -755,62 +1150,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("event_types_pkey", x => x.id);
-                    table.CheckConstraint("event_types_priority_check", "priority IN ('LOW','NORMAL','HIGH','URGENT')");
+                    table.PrimaryKey("notify_event_types_pkey", x => x.id);
+                    table.CheckConstraint("notify_event_types_priority_check", "priority IN ('LOW','NORMAL','HIGH','URGENT')");
                     table.ForeignKey(
-                        name: "event_types_module_id_fkey",
+                        name: "notify_event_types_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
                 comment: "Loại sự kiện thông báo do các phân hệ khai báo (hrm.leave_request.submitted, wms.stock.low...)");
 
             migrationBuilder.CreateTable(
-                name: "feature_flags",
-                schema: "config",
-                columns: table => new
-                {
-                    key = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Khóa flag (wms.pos.offline_mode)"),
-                    module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
-                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên"),
-                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
-                    flag_type = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'BOOLEAN'", comment: "Bật/tắt, theo % rollout, theo biến thể"),
-                    default_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Mặc định khi không có rule khớp"),
-                    variants = table.Column<string>(type: "jsonb", nullable: true, comment: "Danh sách biến thể (VARIANT)"),
-                    is_kill_switch = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Công tắc khẩn cấp tắt tính năng toàn hệ thống"),
-                    owner = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Người/team phụ trách"),
-                    remove_after = table.Column<DateOnly>(type: "date", nullable: true, comment: "Hạn dọn flag khỏi code"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Flag còn được đánh giá"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("feature_flags_pkey", x => x.key);
-                    table.CheckConstraint("feature_flags_flag_type_check", "flag_type IN ('BOOLEAN','PERCENTAGE','VARIANT')");
-                    table.ForeignKey(
-                        name: "feature_flags_module_id_fkey",
-                        column: x => x.module_id,
-                        principalSchema: "iam",
-                        principalTable: "modules",
-                        principalColumn: "id");
-                },
-                comment: "Feature flag bật/tắt tính năng không cần deploy");
-
-            migrationBuilder.CreateTable(
                 name: "resources",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ"),
                     parent_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tài nguyên cha (nhóm menu)"),
                     code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã tài nguyên (EMPLOYEE, LEAVE_REQUEST, GOODS_RECEIPT)"),
@@ -826,6 +1188,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -835,13 +1200,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "resources_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "resources_parent_id_fkey",
                         column: x => x.parent_id,
-                        principalSchema: "iam",
                         principalTable: "resources",
                         principalColumn: "id");
                 },
@@ -849,10 +1212,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "services",
-                schema: "monitor",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã service (auth-api, hrm-api, core-worker, postgres, redis, rabbitmq, minio)"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
@@ -875,6 +1238,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -886,7 +1252,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "services_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
@@ -894,9 +1259,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "setting_definitions",
-                schema: "config",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     key = table.Column<string>(type: "varchar(200)", nullable: false, comment: "Khóa cấu hình (hrm.attendance.late_grace_minutes)"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
                     group_name = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Nhóm hiển thị trên màn hình cài đặt"),
@@ -914,16 +1280,19 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("setting_definitions_pkey", x => x.key);
+                    table.PrimaryKey("setting_definitions_pkey", x => x.id);
+                    table.UniqueConstraint("setting_definitions_key_key", x => x.key);
                     table.CheckConstraint("setting_definitions_data_type_check", "data_type IN ('STRING','INT','DECIMAL','BOOL','DATE','TIME','JSON','ENUM','SECRET')");
                     table.ForeignKey(
                         name: "setting_definitions_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
@@ -931,10 +1300,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "translation_keys",
-                schema: "config",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     @namespace = table.Column<string>(name: "namespace", type: "varchar(50)", nullable: false, comment: "Nhóm: common, errors, validation, hrm, wms, crm"),
                     key = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Khóa (button.save, AUTH_INVALID_TOKEN)"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
@@ -944,6 +1313,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -952,55 +1324,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "translation_keys_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                 },
                 comment: "Khóa dịch dùng chung (nhãn UI, thông báo lỗi API) theo namespace");
 
             migrationBuilder.CreateTable(
-                name: "models",
-                schema: "ai",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    provider_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Nhà cung cấp"),
-                    model_code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã model gửi lên API"),
-                    display_name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Tên hiển thị"),
-                    capabilities = table.Column<List<string>>(type: "text[]", nullable: false, defaultValueSql: "'{CHAT}'", comment: "Năng lực: CHAT, VISION, TOOLS, JSON_MODE, EMBEDDING, RERANK, AUDIO, IMAGE_GEN"),
-                    context_window = table.Column<int>(type: "int", nullable: true, comment: "Số token ngữ cảnh tối đa"),
-                    max_output_tokens = table.Column<int>(type: "int", nullable: true, comment: "Số token đầu ra tối đa"),
-                    embedding_dimension = table.Column<int>(type: "int", nullable: true, comment: "Số chiều vector (model embedding)"),
-                    input_price_per_1m = table.Column<decimal>(type: "numeric(12,6)", nullable: true, comment: "Giá input / 1 triệu token (USD)"),
-                    output_price_per_1m = table.Column<decimal>(type: "numeric(12,6)", nullable: true, comment: "Giá output / 1 triệu token (USD)"),
-                    cached_input_price_per_1m = table.Column<decimal>(type: "numeric(12,6)", nullable: true, comment: "Giá input cache / 1 triệu token"),
-                    price_currency = table.Column<string>(type: "char(3)", nullable: false, defaultValueSql: "'USD'", comment: "Tiền tệ bảng giá"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn dùng"),
-                    deprecated_at = table.Column<DateOnly>(type: "date", nullable: true, comment: "Ngày provider ngừng hỗ trợ"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("models_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "models_provider_id_fkey",
-                        column: x => x.provider_id,
-                        principalSchema: "ai",
-                        principalTable: "providers",
-                        principalColumn: "id");
-                },
-                comment: "Model AI và bảng giá để ước tính chi phí");
-
-            migrationBuilder.CreateTable(
                 name: "administrative_unit_mappings",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     old_unit_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Đơn vị cũ"),
                     new_unit_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Đơn vị mới thay thế"),
                     mapping_type = table.Column<string>(type: "varchar(20)", nullable: false, defaultValueSql: "'MERGE'", comment: "Hình thức: sáp nhập, chia tách, đổi tên, một phần"),
@@ -1011,6 +1345,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1020,13 +1357,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "administrative_unit_mappings_new_unit_id_fkey",
                         column: x => x.new_unit_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "administrative_unit_mappings_old_unit_id_fkey",
                         column: x => x.old_unit_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                 },
@@ -1034,10 +1369,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "destinations",
-                schema: "gateway",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     cluster_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Cluster"),
                     name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên instance (hrm-api-1)"),
                     address = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Địa chỉ nội bộ (http://hrm-api:8080)"),
@@ -1047,6 +1382,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1055,7 +1393,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "destinations_cluster_id_fkey",
                         column: x => x.cluster_id,
-                        principalSchema: "gateway",
                         principalTable: "clusters",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -1063,13 +1400,82 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                 comment: "Địa chỉ instance cụ thể của cluster (container trong Docker network)");
 
             migrationBuilder.CreateTable(
-                name: "executions",
-                schema: "job",
+                name: "feature_flag_rules",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    job_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Job"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    flag_key = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Flag"),
+                    scope_type = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Đối tượng áp dụng"),
+                    scope_value = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Id hoặc mã đối tượng (uuid, mã gói, production/staging)"),
+                    enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Bật/tắt cho đối tượng"),
+                    percentage = table.Column<short>(type: "smallint", nullable: true, comment: "% rollout (PERCENTAGE)"),
+                    variant = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Biến thể trả về (VARIANT)"),
+                    priority = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Ưu tiên (số lớn xét trước)"),
+                    start_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Bắt đầu hiệu lực"),
+                    end_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Kết thúc hiệu lực"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("feature_flag_rules_pkey", x => x.id);
+                    table.CheckConstraint("feature_flag_rules_percentage_check", "percentage BETWEEN 0 AND 100");
+                    table.CheckConstraint("feature_flag_rules_scope_type_check", "scope_type IN ('TENANT','COMPANY','BRANCH','ROLE','USER','PLAN','ENV')");
+                    table.ForeignKey(
+                        name: "feature_flag_rules_flag_key_fkey",
+                        column: x => x.flag_key,
+                        principalTable: "feature_flags",
+                        principalColumn: "key",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Rule target của flag theo tenant/công ty/chi nhánh/vai trò/user, có thời gian hiệu lực");
+
+            migrationBuilder.CreateTable(
+                name: "event_subscriptions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    event_type_code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Event"),
+                    consumer_service = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên service tiêu thụ (wms-api, accounting-api)"),
+                    queue_name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Queue nhận"),
+                    handler_name = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Handler xử lý (tham khảo)"),
+                    max_retries = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "5", comment: "Số lần retry trước khi vào DLQ"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang hoạt động"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("event_subscriptions_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "event_subscriptions_event_type_code_fkey",
+                        column: x => x.event_type_code,
+                        principalTable: "integration_event_types",
+                        principalColumn: "code");
+                },
+                comment: "Service nào tiêu thụ event nào (bản đồ luồng dữ liệu giữa các phân hệ)");
+
+            migrationBuilder.CreateTable(
+                name: "executions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (job chạy theo tenant)"),
+                    job_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Job"),
                     trigger_type = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'SCHEDULED'", comment: "Nguồn kích hoạt"),
                     triggered_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "User chạy tay"),
                     engine_job_id = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Id job bên Hangfire/Quartz"),
@@ -1085,7 +1491,15 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     attempt_no = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "1", comment: "Lần thử"),
                     started_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Bắt đầu"),
                     finished_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Kết thúc"),
-                    duration_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian chạy")
+                    duration_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian chạy"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1095,85 +1509,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "executions_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "job",
-                        principalTable: "definitions",
+                        principalTable: "job_definitions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 },
                 comment: "Lịch sử từng lần chạy job");
 
             migrationBuilder.CreateTable(
-                name: "event_subscriptions",
-                schema: "integration",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    event_type_code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Event"),
-                    consumer_service = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên service tiêu thụ (wms-api, accounting-api)"),
-                    queue_name = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Queue nhận"),
-                    handler_name = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Handler xử lý (tham khảo)"),
-                    max_retries = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "5", comment: "Số lần retry trước khi vào DLQ"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang hoạt động"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("event_subscriptions_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "event_subscriptions_event_type_code_fkey",
-                        column: x => x.event_type_code,
-                        principalSchema: "integration",
-                        principalTable: "event_types",
-                        principalColumn: "code");
-                },
-                comment: "Service nào tiêu thụ event nào (bản đồ luồng dữ liệu giữa các phân hệ)");
-
-            migrationBuilder.CreateTable(
-                name: "feature_flag_rules",
-                schema: "config",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    flag_key = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Flag"),
-                    scope_type = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Đối tượng áp dụng"),
-                    scope_value = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Id hoặc mã đối tượng (uuid, mã gói, production/staging)"),
-                    enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Bật/tắt cho đối tượng"),
-                    percentage = table.Column<short>(type: "smallint", nullable: true, comment: "% rollout (PERCENTAGE)"),
-                    variant = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Biến thể trả về (VARIANT)"),
-                    priority = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Ưu tiên (số lớn xét trước)"),
-                    start_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Bắt đầu hiệu lực"),
-                    end_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Kết thúc hiệu lực"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("feature_flag_rules_pkey", x => x.id);
-                    table.CheckConstraint("feature_flag_rules_percentage_check", "percentage BETWEEN 0 AND 100");
-                    table.CheckConstraint("feature_flag_rules_scope_type_check", "scope_type IN ('TENANT','COMPANY','BRANCH','ROLE','USER','PLAN','ENV')");
-                    table.ForeignKey(
-                        name: "feature_flag_rules_flag_key_fkey",
-                        column: x => x.flag_key,
-                        principalSchema: "config",
-                        principalTable: "feature_flags",
-                        principalColumn: "key",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Rule target của flag theo tenant/công ty/chi nhánh/vai trò/user, có thời gian hiệu lực");
-
-            migrationBuilder.CreateTable(
                 name: "permissions",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phân hệ (denormalize để lọc nhanh)"),
                     resource_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tài nguyên"),
                     action_code = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Hành động"),
@@ -1185,6 +1532,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1193,19 +1543,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "permissions_action_code_fkey",
                         column: x => x.action_code,
-                        principalSchema: "iam",
                         principalTable: "permission_actions",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "permissions_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "permissions_resource_id_fkey",
                         column: x => x.resource_id,
-                        principalSchema: "iam",
                         principalTable: "resources",
                         principalColumn: "id");
                 },
@@ -1213,10 +1560,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "incidents",
-                schema: "monitor",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     service_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Service"),
                     severity = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'MAJOR'", comment: "Mức độ"),
                     title = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Tiêu đề"),
@@ -1229,6 +1576,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1238,7 +1588,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "incidents_service_id_fkey",
                         column: x => x.service_id,
-                        principalSchema: "monitor",
                         principalTable: "services",
                         principalColumn: "id");
                 },
@@ -1246,20 +1595,22 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "setting_values",
-                schema: "config",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (denormalize để cache theo tenant)"),
                     setting_key = table.Column<string>(type: "varchar(200)", nullable: false, comment: "Khóa cấu hình"),
                     scope_type = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Phạm vi"),
                     scope_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Id tenant/công ty/chi nhánh/user (NULL khi SYSTEM)"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (denormalize để cache theo tenant)"),
                     value = table.Column<string>(type: "jsonb", nullable: true, comment: "Giá trị"),
                     value_encrypted = table.Column<string>(type: "text", nullable: true, comment: "Giá trị đã mã hóa (kiểu SECRET)"),
                     created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1270,7 +1621,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "setting_values_setting_key_fkey",
                         column: x => x.setting_key,
-                        principalSchema: "config",
                         principalTable: "setting_definitions",
                         principalColumn: "key",
                         onDelete: ReferentialAction.Cascade);
@@ -1279,10 +1629,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "action_logs",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     instance_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Instance"),
                     task_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Nhiệm vụ liên quan"),
                     instance_step_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Lượt bước"),
@@ -1296,7 +1646,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     attachments = table.Column<List<Guid>>(type: "uuid[]", nullable: true, comment: "File đính kèm (storage.files)"),
                     data_changes = table.Column<string>(type: "jsonb", nullable: true, comment: "Dữ liệu chứng từ được người duyệt sửa"),
                     ip_address = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1307,7 +1664,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "api_keys",
-                schema: "integration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1334,6 +1690,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1346,7 +1705,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "branches",
-                schema: "org",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1390,25 +1748,21 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "branches_country_code_fkey",
                         column: x => x.country_code,
-                        principalSchema: "mdm",
                         principalTable: "countries",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "branches_parent_id_fkey",
                         column: x => x.parent_id,
-                        principalSchema: "org",
                         principalTable: "branches",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "branches_province_id_fkey",
                         column: x => x.province_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "branches_ward_id_fkey",
                         column: x => x.ward_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                 },
@@ -1416,10 +1770,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "buckets",
-                schema: "storage",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     provider_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Provider"),
                     name = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Tên bucket thật trên storage"),
                     purpose = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Mục đích sử dụng"),
@@ -1431,6 +1785,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1442,7 +1799,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "companies",
-                schema: "org",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1489,31 +1845,26 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "companies_base_currency_code_fkey",
                         column: x => x.base_currency_code,
-                        principalSchema: "mdm",
                         principalTable: "currencies",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "companies_country_code_fkey",
                         column: x => x.country_code,
-                        principalSchema: "mdm",
                         principalTable: "countries",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "companies_parent_id_fkey",
                         column: x => x.parent_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "companies_province_id_fkey",
                         column: x => x.province_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "companies_ward_id_fkey",
                         column: x => x.ward_id,
-                        principalSchema: "mdm",
                         principalTable: "administrative_units",
                         principalColumn: "id");
                 },
@@ -1521,7 +1872,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "connections",
-                schema: "integration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1557,7 +1907,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "connections_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                 },
@@ -1565,7 +1914,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "external_mappings",
-                schema: "integration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1577,7 +1925,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     external_id = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Id phía ngoài"),
                     external_data = table.Column<string>(type: "jsonb", nullable: true, comment: "Dữ liệu bổ sung phía ngoài"),
                     last_synced_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đồng bộ gần nhất"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1585,7 +1940,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "external_mappings_connection_id_fkey",
                         column: x => x.connection_id,
-                        principalSchema: "integration",
                         principalTable: "connections",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -1594,7 +1948,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "conversations",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1605,7 +1958,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     title = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Tiêu đề (tự sinh từ câu đầu)"),
                     is_archived = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Lưu trữ"),
                     last_message_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Tin nhắn cuối"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1615,10 +1975,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "messages",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     conversation_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Hội thoại"),
                     role = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Vai trò"),
                     content = table.Column<string>(type: "text", nullable: false, comment: "Nội dung"),
@@ -1628,7 +1988,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     output_tokens = table.Column<int>(type: "int", nullable: true, comment: "Token ra"),
                     feedback = table.Column<short>(type: "smallint", nullable: true, comment: "Đánh giá: 1 hữu ích, -1 không hữu ích"),
                     feedback_note = table.Column<string>(type: "text", nullable: true, comment: "Góp ý"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1638,7 +2005,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "messages_conversation_id_fkey",
                         column: x => x.conversation_id,
-                        principalSchema: "ai",
                         principalTable: "conversations",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -1647,7 +2013,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "cors_policies",
-                schema: "gateway",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1663,6 +2028,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1673,10 +2041,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "routes",
-                schema: "gateway",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã route"),
                     module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ"),
                     cluster_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Cluster đích"),
@@ -1703,6 +2071,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1712,31 +2083,26 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "routes_cluster_id_fkey",
                         column: x => x.cluster_id,
-                        principalSchema: "gateway",
                         principalTable: "clusters",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "routes_cors_policy_id_fkey",
                         column: x => x.cors_policy_id,
-                        principalSchema: "gateway",
                         principalTable: "cors_policies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "routes_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "routes_rate_limit_policy_id_fkey",
                         column: x => x.rate_limit_policy_id,
-                        principalSchema: "gateway",
                         principalTable: "rate_limit_policies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "routes_security_header_policy_id_fkey",
                         column: x => x.security_header_policy_id,
-                        principalSchema: "gateway",
                         principalTable: "security_header_policies",
                         principalColumn: "id");
                 },
@@ -1744,10 +2110,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "definition_versions",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     definition_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Quy trình"),
                     version_no = table.Column<int>(type: "int", nullable: false, comment: "Số phiên bản"),
                     status = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'DRAFT'", comment: "Nháp, đã phát hành, lưu trữ"),
@@ -1759,6 +2125,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1770,10 +2139,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "steps",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     version_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phiên bản"),
                     code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã bước (trong phiên bản)"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên bước (Trưởng bộ phận duyệt)"),
@@ -1801,6 +2170,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1813,7 +2185,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "steps_version_id_fkey",
                         column: x => x.version_id,
-                        principalSchema: "workflow",
                         principalTable: "definition_versions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -1822,10 +2193,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "step_approvers",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     step_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Bước"),
                     approver_type = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Cách xác định người duyệt"),
                     approver_ref_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Id user / role / phòng ban tương ứng"),
@@ -1838,6 +2209,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1848,7 +2222,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "step_approvers_step_id_fkey",
                         column: x => x.step_id,
-                        principalSchema: "workflow",
                         principalTable: "steps",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -1857,10 +2230,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "transitions",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     version_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phiên bản"),
                     from_step_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Bước nguồn"),
                     to_step_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Bước đích"),
@@ -1874,6 +2247,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -1883,21 +2259,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "transitions_from_step_id_fkey",
                         column: x => x.from_step_id,
-                        principalSchema: "workflow",
                         principalTable: "steps",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "transitions_to_step_id_fkey",
                         column: x => x.to_step_id,
-                        principalSchema: "workflow",
                         principalTable: "steps",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "transitions_version_id_fkey",
                         column: x => x.version_id,
-                        principalSchema: "workflow",
                         principalTable: "definition_versions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -1905,69 +2278,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                 comment: "Cạnh nối giữa các bước kèm điều kiện rẽ nhánh (VD: amount < 10000000 → Trưởng BP; >= 50000000 → Giám đốc)");
 
             migrationBuilder.CreateTable(
-                name: "definitions",
-                schema: "workflow",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
-                    document_type_code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Loại chứng từ áp dụng"),
-                    code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã quy trình"),
-                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên quy trình"),
-                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
-                    company_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Áp dụng riêng công ty (NULL = toàn tenant)"),
-                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Áp dụng riêng chi nhánh"),
-                    department_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Áp dụng riêng phòng ban"),
-                    applicable_condition = table.Column<string>(type: "jsonb", nullable: true, comment: "Điều kiện chọn quy trình khi có nhiều quy trình cùng loại chứng từ"),
-                    priority = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Ưu tiên khi nhiều quy trình cùng khớp (số lớn ưu tiên)"),
-                    current_version_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phiên bản đang áp dụng (workflow.definition_versions)"),
-                    allow_recall = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Người tạo được thu hồi khi chưa có ai duyệt"),
-                    allow_edit_while_pending = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cho sửa chứng từ khi đang chờ duyệt"),
-                    auto_approve_if_requester_is_approver = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Tự bỏ qua bước nếu người duyệt chính là người tạo"),
-                    skip_duplicate_approver = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Một người xuất hiện ở nhiều bước chỉ cần duyệt một lần"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang áp dụng"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
-                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("definitions_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "definitions_branch_id_fkey",
-                        column: x => x.branch_id,
-                        principalSchema: "org",
-                        principalTable: "branches",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "definitions_company_id_fkey",
-                        column: x => x.company_id,
-                        principalSchema: "org",
-                        principalTable: "companies",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "definitions_document_type_code_fkey",
-                        column: x => x.document_type_code,
-                        principalSchema: "mdm",
-                        principalTable: "document_types",
-                        principalColumn: "code");
-                    table.ForeignKey(
-                        name: "fk_wf_def_current_version",
-                        column: x => x.current_version_id,
-                        principalSchema: "workflow",
-                        principalTable: "definition_versions",
-                        principalColumn: "id");
-                },
-                comment: "Định nghĩa quy trình duyệt cho một loại chứng từ (đơn nghỉ phép, đề xuất mua hàng, chiết khấu vượt khung...)");
-
-            migrationBuilder.CreateTable(
                 name: "delegations",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -1990,6 +2301,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2000,15 +2314,8 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.CheckConstraint("delegations_scope_check", "scope IN ('ALL','MODULE','DOCUMENT_TYPE','DEFINITION')");
                     table.CheckConstraint("delegations_status_check", "status IN ('ACTIVE','REVOKED','EXPIRED')");
                     table.ForeignKey(
-                        name: "delegations_definition_id_fkey",
-                        column: x => x.definition_id,
-                        principalSchema: "workflow",
-                        principalTable: "definitions",
-                        principalColumn: "id");
-                    table.ForeignKey(
                         name: "delegations_document_type_code_fkey",
                         column: x => x.document_type_code,
-                        principalSchema: "mdm",
                         principalTable: "document_types",
                         principalColumn: "code");
                 },
@@ -2016,12 +2323,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "deliveries",
-                schema: "notify",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    notification_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Thông báo gốc"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    notification_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Thông báo gốc"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người nhận (NULL nếu gửi tới email ngoài hệ thống)"),
                     channel = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Kênh"),
                     destination = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Địa chỉ đích: email, SĐT, device token id"),
@@ -2036,7 +2342,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     provider_message_id = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Message id phía provider (đối soát)"),
                     last_error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi gần nhất"),
                     sent_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Gửi thành công lúc"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2048,19 +2361,27 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "delivery_attachments",
-                schema: "notify",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     delivery_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Lượt gửi"),
-                    file_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "File đính kèm")
+                    file_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "File đính kèm"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("delivery_attachments_pkey", x => new { x.delivery_id, x.file_id });
+                    table.PrimaryKey("delivery_attachments_pkey", x => x.id);
                     table.ForeignKey(
                         name: "delivery_attachments_delivery_id_fkey",
                         column: x => x.delivery_id,
-                        principalSchema: "notify",
                         principalTable: "deliveries",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -2069,7 +2390,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "departments",
-                schema: "org",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2104,19 +2424,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "departments_branch_id_fkey",
                         column: x => x.branch_id,
-                        principalSchema: "org",
                         principalTable: "branches",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "departments_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "departments_parent_id_fkey",
                         column: x => x.parent_id,
-                        principalSchema: "org",
                         principalTable: "departments",
                         principalColumn: "id");
                 },
@@ -2124,10 +2441,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "device_tokens",
-                schema: "notify",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
                     device_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Thiết bị"),
                     app_code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "App (HRM_MOBILE, WMS_MOBILE)"),
@@ -2137,7 +2454,13 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Còn hiệu lực (FCM báo UNREGISTERED → false)"),
                     last_used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Lần gửi thành công gần nhất"),
                     created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Đăng ký lúc"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Cập nhật token lúc")
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Cập nhật token lúc"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2148,7 +2471,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "exchange_rates",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2164,6 +2486,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2175,13 +2500,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "exchange_rates_from_currency_fkey",
                         column: x => x.from_currency,
-                        principalSchema: "mdm",
                         principalTable: "currencies",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "exchange_rates_to_currency_fkey",
                         column: x => x.to_currency,
-                        principalSchema: "mdm",
                         principalTable: "currencies",
                         principalColumn: "code");
                 },
@@ -2189,10 +2512,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "file_share_links",
-                schema: "storage",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     file_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "File"),
                     token_hash = table.Column<string>(type: "varchar(128)", nullable: false, comment: "Hash token trong URL chia sẻ"),
                     password_hash = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Mật khẩu mở link (tùy chọn)"),
@@ -2201,8 +2524,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     download_count = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Đã tải"),
                     allowed_emails = table.Column<List<string>>(type: "citext[]", nullable: true, comment: "Chỉ cho phép email này (tùy chọn)"),
                     revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thu hồi lúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo link"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2212,10 +2541,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "file_variants",
-                schema: "storage",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     file_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "File gốc"),
                     variant_name = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Tên biến thể (THUMB, SMALL, MEDIUM, LARGE)"),
                     object_key = table.Column<string>(type: "varchar(1000)", nullable: false, comment: "Object key biến thể"),
@@ -2223,7 +2552,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     size_bytes = table.Column<long>(type: "bigint", nullable: false, comment: "Dung lượng"),
                     width = table.Column<int>(type: "int", nullable: true, comment: "Rộng (px)"),
                     height = table.Column<int>(type: "int", nullable: true, comment: "Cao (px)"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2233,7 +2569,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "files",
-                schema: "storage",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (file_id dùng ở các phân hệ)"),
@@ -2284,13 +2619,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "files_bucket_id_fkey",
                         column: x => x.bucket_id,
-                        principalSchema: "storage",
                         principalTable: "buckets",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "files_previous_version_id_fkey",
                         column: x => x.previous_version_id,
-                        principalSchema: "storage",
                         principalTable: "files",
                         principalColumn: "id");
                 },
@@ -2298,10 +2631,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "tenants",
-                schema: "org",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã tenant duy nhất, dùng trong subdomain/đăng nhập (VD: remak)"),
                     name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên hiển thị"),
                     legal_name = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Tên pháp lý đầy đủ"),
@@ -2342,19 +2675,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_tenants_logo",
                         column: x => x.logo_file_id,
-                        principalSchema: "storage",
                         principalTable: "files",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "tenants_country_code_fkey",
                         column: x => x.country_code,
-                        principalSchema: "mdm",
                         principalTable: "countries",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "tenants_default_currency_code_fkey",
                         column: x => x.default_currency_code,
-                        principalSchema: "mdm",
                         principalTable: "currencies",
                         principalColumn: "code");
                 },
@@ -2362,7 +2692,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "gateway_clients",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2380,6 +2709,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2389,13 +2721,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "gateway_clients_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "gateway_clients_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2403,7 +2733,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "guardrail_policies",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2420,6 +2749,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2431,7 +2763,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "guardrail_policies_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2439,7 +2770,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "holidays",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2474,13 +2804,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "holidays_country_code_fkey",
                         column: x => x.country_code,
-                        principalSchema: "mdm",
                         principalTable: "countries",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "holidays_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2488,7 +2816,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "inbound_sources",
-                schema: "integration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2527,19 +2854,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "inbound_sources_branch_id_fkey",
                         column: x => x.branch_id,
-                        principalSchema: "org",
                         principalTable: "branches",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "inbound_sources_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "inbound_sources_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2547,7 +2871,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "model_aliases",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2558,6 +2881,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2566,7 +2892,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "model_aliases_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2574,7 +2899,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "notifications",
-                schema: "notify",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2590,7 +2914,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     idempotency_key = table.Column<string>(type: "varchar(200)", nullable: true, comment: "Chống gửi trùng khi event bị phát lại"),
                     sender_user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người gửi (thông báo thủ công)"),
                     trace_id = table.Column<string>(type: "varchar(64)", nullable: true, comment: "Trace id liên kết request gốc"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2599,13 +2930,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "notifications_event_type_id_fkey",
                         column: x => x.event_type_id,
-                        principalSchema: "notify",
-                        principalTable: "event_types",
+                        principalTable: "notify_event_types",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "notifications_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2613,7 +2942,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "numbering_rules",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2652,25 +2980,21 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "numbering_rules_branch_id_fkey",
                         column: x => x.branch_id,
-                        principalSchema: "org",
                         principalTable: "branches",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "numbering_rules_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "numbering_rules_document_type_code_fkey",
                         column: x => x.document_type_code,
-                        principalSchema: "mdm",
                         principalTable: "document_types",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "numbering_rules_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2678,7 +3002,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "oauth_clients",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2724,13 +3047,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "oauth_clients_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "oauth_clients_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2738,7 +3059,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "provider_credentials",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2757,6 +3077,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2766,57 +3089,18 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "provider_credentials_provider_id_fkey",
                         column: x => x.provider_id,
-                        principalSchema: "ai",
-                        principalTable: "providers",
+                        principalTable: "ai_providers",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "provider_credentials_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
                 comment: "API key của nhà cung cấp AI — lưu tập trung, các service con không giữ key. Tenant có thể dùng key riêng (BYOK)");
 
             migrationBuilder.CreateTable(
-                name: "providers",
-                schema: "storage",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (NULL = storage hệ thống)"),
-                    code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã cấu hình"),
-                    provider_type = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Loại provider"),
-                    endpoint = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Endpoint (https://minio.internal:9000)"),
-                    public_base_url = table.Column<string>(type: "varchar(500)", nullable: true, comment: "URL công khai/CDN cho file public"),
-                    region = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Region"),
-                    access_key_encrypted = table.Column<string>(type: "text", nullable: true, comment: "Access key đã mã hóa"),
-                    secret_key_encrypted = table.Column<string>(type: "text", nullable: true, comment: "Secret key đã mã hóa"),
-                    use_path_style = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Path-style URL (MinIO cần true)"),
-                    is_default = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Provider mặc định"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang dùng"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("providers_pkey", x => x.id);
-                    table.CheckConstraint("providers_provider_type_check", "provider_type IN ('MINIO','S3','R2','GCS','AZURE_BLOB','LOCAL')");
-                    table.ForeignKey(
-                        name: "providers_tenant_id_fkey",
-                        column: x => x.tenant_id,
-                        principalSchema: "org",
-                        principalTable: "tenants",
-                        principalColumn: "id");
-                },
-                comment: "Cấu hình nhà cung cấp Object Storage (MinIO, S3, R2...). Hỗ trợ tenant dùng storage riêng");
-
-            migrationBuilder.CreateTable(
                 name: "push_configs",
-                schema: "notify",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2834,6 +3118,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2843,7 +3130,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "push_configs_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2851,7 +3137,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "roles",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2880,13 +3165,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "roles_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "roles_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2894,7 +3177,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "security_policies",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2922,6 +3204,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2931,7 +3216,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "security_policies_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -2939,7 +3223,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "smtp_configs",
-                schema: "notify",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -2963,6 +3246,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -2973,21 +3259,55 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "smtp_configs_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "smtp_configs_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
                 comment: "Cấu hình SMTP theo hệ thống, tenant hoặc từng công ty");
 
             migrationBuilder.CreateTable(
+                name: "storage_providers",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (NULL = storage hệ thống)"),
+                    code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Mã cấu hình"),
+                    provider_type = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Loại provider"),
+                    endpoint = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Endpoint (https://minio.internal:9000)"),
+                    public_base_url = table.Column<string>(type: "varchar(500)", nullable: true, comment: "URL công khai/CDN cho file public"),
+                    region = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Region"),
+                    access_key_encrypted = table.Column<string>(type: "text", nullable: true, comment: "Access key đã mã hóa"),
+                    secret_key_encrypted = table.Column<string>(type: "text", nullable: true, comment: "Secret key đã mã hóa"),
+                    use_path_style = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Path-style URL (MinIO cần true)"),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Provider mặc định"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang dùng"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("storage_providers_pkey", x => x.id);
+                    table.CheckConstraint("storage_providers_provider_type_check", "provider_type IN ('MINIO','S3','R2','GCS','AZURE_BLOB','LOCAL')");
+                    table.ForeignKey(
+                        name: "storage_providers_tenant_id_fkey",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id");
+                },
+                comment: "Cấu hình nhà cung cấp Object Storage (MinIO, S3, R2...). Hỗ trợ tenant dùng storage riêng");
+
+            migrationBuilder.CreateTable(
                 name: "tax_rates",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3008,6 +3328,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3019,13 +3342,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "tax_rates_tax_type_code_fkey",
                         column: x => x.tax_type_code,
-                        principalSchema: "mdm",
                         principalTable: "tax_types",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "tax_rates_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3033,7 +3354,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "templates",
-                schema: "notify",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3066,13 +3386,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "templates_event_type_id_fkey",
                         column: x => x.event_type_id,
-                        principalSchema: "notify",
-                        principalTable: "event_types",
+                        principalTable: "notify_event_types",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "templates_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3080,7 +3398,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "tenant_modules",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3095,6 +3412,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3103,13 +3423,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "tenant_modules_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "tenant_modules_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3117,12 +3435,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "tenant_overrides",
-                schema: "job",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    job_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Job"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
+                    job_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Job"),
                     cron_expression = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Cron riêng"),
                     parameters = table.Column<string>(type: "jsonb", nullable: true, comment: "Tham số riêng (merge với mặc định)"),
                     is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Bật/tắt cho tenant"),
@@ -3130,6 +3447,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3138,14 +3458,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "tenant_overrides_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "job",
-                        principalTable: "definitions",
+                        principalTable: "job_definitions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "tenant_overrides_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3153,7 +3471,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "tenant_rate_limits",
-                schema: "gateway",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3165,6 +3482,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3173,14 +3493,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "tenant_rate_limits_policy_id_fkey",
                         column: x => x.policy_id,
-                        principalSchema: "gateway",
                         principalTable: "rate_limit_policies",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "tenant_rate_limits_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3188,13 +3506,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "translations",
-                schema: "config",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant ghi đè (NULL = bản dịch chuẩn)"),
                     key_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Khóa dịch"),
                     language_code = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Ngôn ngữ"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant ghi đè (NULL = bản dịch chuẩn)"),
                     value = table.Column<string>(type: "text", nullable: false, comment: "Nội dung dịch (hỗ trợ ICU {count, plural, ...})"),
                     is_reviewed = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đã duyệt"),
                     is_machine = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Dịch máy (AI)"),
@@ -3202,6 +3519,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3210,20 +3530,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "translations_key_id_fkey",
                         column: x => x.key_id,
-                        principalSchema: "config",
                         principalTable: "translation_keys",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "translations_language_code_fkey",
                         column: x => x.language_code,
-                        principalSchema: "config",
                         principalTable: "languages",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "translations_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3231,7 +3548,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "uoms",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3262,13 +3578,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "uoms_category_id_fkey",
                         column: x => x.category_id,
-                        principalSchema: "mdm",
                         principalTable: "uom_categories",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "uoms_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3276,7 +3590,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "upload_policies",
-                schema: "storage",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3303,6 +3616,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3314,19 +3630,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "upload_policies_bucket_id_fkey",
                         column: x => x.bucket_id,
-                        principalSchema: "storage",
                         principalTable: "buckets",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "upload_policies_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "upload_policies_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3334,7 +3647,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "users",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (sub trong JWT)"),
@@ -3398,37 +3710,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_users_avatar",
                         column: x => x.avatar_file_id,
-                        principalSchema: "storage",
                         principalTable: "files",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "users_default_branch_id_fkey",
                         column: x => x.default_branch_id,
-                        principalSchema: "org",
                         principalTable: "branches",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "users_default_company_id_fkey",
                         column: x => x.default_company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "users_department_id_fkey",
                         column: x => x.department_id,
-                        principalSchema: "org",
                         principalTable: "departments",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "users_direct_manager_id_fkey",
                         column: x => x.direct_manager_id,
-                        principalSchema: "iam",
                         principalTable: "users",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "users_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3436,7 +3742,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "webhook_endpoints",
-                schema: "integration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3476,7 +3781,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "webhook_endpoints_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -3484,7 +3788,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "work_calendars",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3513,26 +3816,89 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "work_calendars_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "work_calendars_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
                 comment: "Lịch làm việc (ca hành chính chuẩn) dùng chung: HRM tính công, WMS tính hạn giao, CRM hẹn lịch chăm sóc");
 
             migrationBuilder.CreateTable(
-                name: "inbound_requests",
-                schema: "integration",
+                name: "workflow_definitions",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    source_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Nguồn"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
+                    document_type_code = table.Column<string>(type: "varchar(50)", nullable: false, comment: "Loại chứng từ áp dụng"),
+                    code = table.Column<string>(type: "varchar(100)", nullable: false, comment: "Mã quy trình"),
+                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên quy trình"),
+                    description = table.Column<string>(type: "text", nullable: true, comment: "Mô tả"),
+                    company_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Áp dụng riêng công ty (NULL = toàn tenant)"),
+                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Áp dụng riêng chi nhánh"),
+                    department_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Áp dụng riêng phòng ban"),
+                    applicable_condition = table.Column<string>(type: "jsonb", nullable: true, comment: "Điều kiện chọn quy trình khi có nhiều quy trình cùng loại chứng từ"),
+                    priority = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Ưu tiên khi nhiều quy trình cùng khớp (số lớn ưu tiên)"),
+                    current_version_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phiên bản đang áp dụng (workflow.definition_versions)"),
+                    allow_recall = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Người tạo được thu hồi khi chưa có ai duyệt"),
+                    allow_edit_while_pending = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cho sửa chứng từ khi đang chờ duyệt"),
+                    auto_approve_if_requester_is_approver = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Tự bỏ qua bước nếu người duyệt chính là người tạo"),
+                    skip_duplicate_approver = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Một người xuất hiện ở nhiều bước chỉ cần duyệt một lần"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang áp dụng"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (iam.users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("workflow_definitions_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_wf_def_current_version",
+                        column: x => x.current_version_id,
+                        principalTable: "definition_versions",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "workflow_definitions_branch_id_fkey",
+                        column: x => x.branch_id,
+                        principalTable: "branches",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "workflow_definitions_company_id_fkey",
+                        column: x => x.company_id,
+                        principalTable: "companies",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "workflow_definitions_department_id_fkey",
+                        column: x => x.department_id,
+                        principalTable: "departments",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "workflow_definitions_document_type_code_fkey",
+                        column: x => x.document_type_code,
+                        principalTable: "document_types",
+                        principalColumn: "code");
+                    table.ForeignKey(
+                        name: "workflow_definitions_tenant_id_fkey",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id");
+                },
+                comment: "Định nghĩa quy trình duyệt cho một loại chứng từ (đơn nghỉ phép, đề xuất mua hàng, chiết khấu vượt khung...)");
+
+            migrationBuilder.CreateTable(
+                name: "inbound_requests",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    source_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Nguồn"),
                     external_id = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Id giao dịch phía ngoài (mã GD ngân hàng, order_sn) để chống trùng"),
                     http_method = table.Column<string>(type: "varchar(10)", nullable: true, comment: "Phương thức"),
                     headers = table.Column<string>(type: "jsonb", nullable: true, comment: "Header nhận được"),
@@ -3548,7 +3914,15 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi xử lý"),
                     retry_count = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "0", comment: "Số lần xử lý lại"),
                     received_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Nhận lúc"),
-                    processed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Xử lý xong lúc")
+                    processed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Xử lý xong lúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -3557,7 +3931,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "inbound_requests_source_id_fkey",
                         column: x => x.source_id,
-                        principalSchema: "integration",
                         principalTable: "inbound_sources",
                         principalColumn: "id");
                 },
@@ -3565,15 +3938,22 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "numbering_counters",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     rule_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Quy tắc"),
                     period_key = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Khóa kỳ: 'ALL', '2026', '202611', '20261121'"),
                     scope_key = table.Column<string>(type: "varchar(100)", nullable: false, defaultValueSql: "'-'", comment: "Khóa phạm vi: '-' hoặc id công ty/chi nhánh"),
                     current_value = table.Column<long>(type: "bigint", nullable: false, comment: "Giá trị đã cấp gần nhất"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần cấp gần nhất")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần cấp gần nhất"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -3581,7 +3961,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "numbering_counters_rule_id_fkey",
                         column: x => x.rule_id,
-                        principalSchema: "mdm",
                         principalTable: "numbering_rules",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -3590,10 +3969,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "model_alias_targets",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     alias_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Alias"),
                     model_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Model"),
                     credential_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Ép dùng key này (NULL = tự chọn)"),
@@ -3603,6 +3982,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3611,20 +3993,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "model_alias_targets_alias_id_fkey",
                         column: x => x.alias_id,
-                        principalSchema: "ai",
                         principalTable: "model_aliases",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "model_alias_targets_credential_id_fkey",
                         column: x => x.credential_id,
-                        principalSchema: "ai",
                         principalTable: "provider_credentials",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "model_alias_targets_model_id_fkey",
                         column: x => x.model_id,
-                        principalSchema: "ai",
                         principalTable: "models",
                         principalColumn: "id");
                 },
@@ -3632,10 +4011,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "role_permissions",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     role_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Vai trò"),
                     permission_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Quyền"),
                     data_scope = table.Column<string>(type: "varchar(20)", nullable: false, defaultValueSql: "'OWN'", comment: "Phạm vi: cá nhân, phòng ban, phòng ban + cấp dưới, chi nhánh, công ty, toàn tenant, tùy chọn"),
@@ -3644,6 +4023,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3653,14 +4035,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "role_permissions_permission_id_fkey",
                         column: x => x.permission_id,
-                        principalSchema: "iam",
                         principalTable: "permissions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "role_permissions_role_id_fkey",
                         column: x => x.role_id,
-                        principalSchema: "iam",
                         principalTable: "roles",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -3669,7 +4049,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "uom_conversions",
-                schema: "mdm",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3682,6 +4061,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3693,27 +4075,606 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "uom_conversions_from_uom_id_fkey",
                         column: x => x.from_uom_id,
-                        principalSchema: "mdm",
                         principalTable: "uoms",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "uom_conversions_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "uom_conversions_to_uom_id_fkey",
                         column: x => x.to_uom_id,
-                        principalSchema: "mdm",
                         principalTable: "uoms",
                         principalColumn: "id");
                 },
                 comment: "Bảng quy đổi ĐVT tổng quát giữa hai đơn vị (kể cả khác nhóm/không tỷ lệ cố định). Quy đổi riêng theo sản phẩm (1 thùng = 24 lon) đặt ở WMS");
 
             migrationBuilder.CreateTable(
+                name: "password_histories",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    password_hash = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Hash mật khẩu cũ"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm đặt mật khẩu này"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("password_histories_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "password_histories_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Lịch sử mật khẩu để chặn dùng lại N mật khẩu gần nhất");
+
+            migrationBuilder.CreateTable(
+                name: "quotas",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
+                    module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ (NULL = toàn tenant)"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User (NULL = không giới hạn theo user)"),
+                    period = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Chu kỳ"),
+                    max_requests = table.Column<int>(type: "int", nullable: true, comment: "Số request tối đa"),
+                    max_tokens = table.Column<long>(type: "bigint", nullable: true, comment: "Tổng token tối đa"),
+                    max_cost_usd = table.Column<decimal>(type: "numeric(12,4)", nullable: true, comment: "Chi phí tối đa (USD)"),
+                    alert_threshold_pct = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "80", comment: "Ngưỡng % gửi cảnh báo"),
+                    action_on_exceed = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'BLOCK'", comment: "Khi vượt: chặn, chỉ cảnh báo, chuyển model rẻ hơn"),
+                    downgrade_alias_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Alias rẻ hơn khi DOWNGRADE"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang áp dụng"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("quotas_pkey", x => x.id);
+                    table.CheckConstraint("quotas_action_on_exceed_check", "action_on_exceed IN ('BLOCK','ALERT_ONLY','DOWNGRADE')");
+                    table.CheckConstraint("quotas_alert_threshold_pct_check", "alert_threshold_pct BETWEEN 1 AND 100");
+                    table.CheckConstraint("quotas_period_check", "period IN ('DAILY','MONTHLY')");
+                    table.ForeignKey(
+                        name: "quotas_downgrade_alias_id_fkey",
+                        column: x => x.downgrade_alias_id,
+                        principalTable: "model_aliases",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "quotas_module_id_fkey",
+                        column: x => x.module_id,
+                        principalTable: "modules",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "quotas_tenant_id_fkey",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "quotas_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id");
+                },
+                comment: "Hạn mức sử dụng AI theo tenant / phân hệ / user theo ngày hoặc tháng");
+
+            migrationBuilder.CreateTable(
+                name: "user_devices",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    device_key = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Định danh thiết bị do client sinh và lưu (fingerprint/installation id)"),
+                    device_name = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Tên thiết bị (iPhone 15 của Hoàng, Chrome - Windows)"),
+                    platform = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Nền tảng"),
+                    os_version = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Phiên bản hệ điều hành"),
+                    app_version = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Phiên bản app"),
+                    user_agent = table.Column<string>(type: "text", nullable: true, comment: "User-Agent gần nhất"),
+                    last_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP gần nhất"),
+                    is_trusted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Thiết bị tin cậy (bỏ qua 2FA)"),
+                    first_seen_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần đầu thấy"),
+                    last_seen_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần cuối hoạt động"),
+                    status = table.Column<string>(type: "varchar(20)", nullable: false, defaultValueSql: "'ACTIVE'", comment: "Trạng thái"),
+                    revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm thu hồi"),
+                    revoked_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người thu hồi"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_devices_pkey", x => x.id);
+                    table.CheckConstraint("user_devices_platform_check", "platform IN ('WEB','ANDROID','IOS','DESKTOP','OTHER')");
+                    table.CheckConstraint("user_devices_status_check", "status IN ('ACTIVE','REVOKED','BLOCKED')");
+                    table.ForeignKey(
+                        name: "user_devices_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Thiết bị đã đăng nhập của user (giới hạn thiết bị, thu hồi theo thiết bị)");
+
+            migrationBuilder.CreateTable(
+                name: "user_external_logins",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    provider = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Nhà cung cấp định danh"),
+                    provider_key = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Id user phía provider (sub)"),
+                    provider_email = table.Column<string>(type: "citext", nullable: true, comment: "Email phía provider"),
+                    linked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm liên kết"),
+                    last_used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Lần dùng gần nhất"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_external_logins_pkey", x => x.id);
+                    table.CheckConstraint("user_external_logins_provider_check", "provider IN ('GOOGLE','MICROSOFT','APPLE','ZALO','LDAP','SAML','OIDC')");
+                    table.ForeignKey(
+                        name: "user_external_logins_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Liên kết đăng nhập ngoài (Google, Microsoft, Zalo, Apple) với tài khoản nội bộ");
+
+            migrationBuilder.CreateTable(
+                name: "user_notifications",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (denormalize)"),
+                    notification_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Thông báo gốc"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Người nhận"),
+                    module_code = table.Column<string>(type: "varchar(30)", nullable: true, comment: "Phân hệ (lọc theo tab)"),
+                    title = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Tiêu đề đã render"),
+                    body = table.Column<string>(type: "text", nullable: true, comment: "Nội dung đã render"),
+                    icon = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Icon/ảnh đại diện người gửi"),
+                    action_url = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Link khi bấm"),
+                    category = table.Column<string>(type: "varchar(30)", nullable: false, defaultValueSql: "'INFO'", comment: "Nhóm hiển thị"),
+                    is_read = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đã đọc"),
+                    read_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đọc lúc"),
+                    is_pinned = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Ghim"),
+                    is_archived = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đã lưu trữ/ẩn"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm nhận"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_notifications_pkey", x => x.id);
+                    table.CheckConstraint("user_notifications_category_check", "category IN ('INFO','TASK','APPROVAL','WARNING','SYSTEM')");
+                    table.ForeignKey(
+                        name: "user_notifications_notification_id_fkey",
+                        column: x => x.notification_id,
+                        principalTable: "notifications",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "user_notifications_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Hộp thư thông báo in-app của từng user (thanh chuông). Đã render sẵn nội dung theo ngôn ngữ user");
+
+            migrationBuilder.CreateTable(
+                name: "user_org_assignments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    company_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Công ty"),
+                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Chi nhánh"),
+                    department_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phòng ban"),
+                    job_title = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Chức danh tại đơn vị này"),
+                    is_primary = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đơn vị chính"),
+                    is_manager = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Là quản lý của đơn vị này"),
+                    valid_from = table.Column<DateOnly>(type: "date", nullable: false, defaultValueSql: "current_date", comment: "Hiệu lực từ ngày"),
+                    valid_to = table.Column<DateOnly>(type: "date", nullable: true, comment: "Hiệu lực đến ngày (NULL = vô thời hạn)"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_org_assignments_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "user_org_assignments_branch_id_fkey",
+                        column: x => x.branch_id,
+                        principalTable: "branches",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "user_org_assignments_company_id_fkey",
+                        column: x => x.company_id,
+                        principalTable: "companies",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "user_org_assignments_department_id_fkey",
+                        column: x => x.department_id,
+                        principalTable: "departments",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "user_org_assignments_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Gán user vào nhiều công ty/chi nhánh/phòng ban (kiêm nhiệm). Dùng để tính Data Scope và chọn ngữ cảnh làm việc");
+
+            migrationBuilder.CreateTable(
+                name: "user_permission_overrides",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    permission_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Quyền"),
+                    effect = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'GRANT'", comment: "GRANT = cấp thêm, DENY = chặn (ưu tiên cao nhất)"),
+                    data_scope = table.Column<string>(type: "varchar(20)", nullable: true, comment: "Phạm vi dữ liệu khi GRANT"),
+                    valid_to = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hết hạn"),
+                    reason = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Lý do"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_permission_overrides_pkey", x => x.id);
+                    table.CheckConstraint("user_permission_overrides_data_scope_check", "data_scope IN ('OWN','DEPARTMENT','DEPARTMENT_TREE','BRANCH','COMPANY','ALL')");
+                    table.CheckConstraint("user_permission_overrides_effect_check", "effect IN ('GRANT','DENY')");
+                    table.ForeignKey(
+                        name: "user_permission_overrides_permission_id_fkey",
+                        column: x => x.permission_id,
+                        principalTable: "permissions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "user_permission_overrides_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Quyền gán trực tiếp cho user (cộng thêm hoặc loại trừ so với vai trò)");
+
+            migrationBuilder.CreateTable(
+                name: "user_preferences",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    event_type_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Sự kiện (NULL = áp dụng mọi sự kiện)"),
+                    channel = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Kênh"),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Bật/tắt"),
+                    quiet_start = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Bắt đầu giờ yên lặng (không push)"),
+                    quiet_end = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Kết thúc giờ yên lặng"),
+                    digest_mode = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'INSTANT'", comment: "Gửi ngay hay gom tóm tắt"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Cập nhật lúc"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_preferences_pkey", x => x.id);
+                    table.CheckConstraint("user_preferences_channel_check", "channel IN ('IN_APP','PUSH','EMAIL','SMS','ZALO')");
+                    table.CheckConstraint("user_preferences_digest_mode_check", "digest_mode IN ('INSTANT','HOURLY','DAILY')");
+                    table.ForeignKey(
+                        name: "user_preferences_event_type_id_fkey",
+                        column: x => x.event_type_id,
+                        principalTable: "notify_event_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "user_preferences_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Tùy chọn nhận thông báo của user theo sự kiện × kênh, giờ yên lặng");
+
+            migrationBuilder.CreateTable(
+                name: "user_recovery_codes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    code_hash = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Hash mã khôi phục"),
+                    used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm đã dùng (NULL = chưa dùng)"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_recovery_codes_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "user_recovery_codes_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Mã khôi phục 2FA dùng một lần");
+
+            migrationBuilder.CreateTable(
+                name: "user_roles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    role_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Vai trò"),
+                    company_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Vai trò chỉ có hiệu lực trong công ty này (NULL = mọi công ty)"),
+                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Vai trò chỉ có hiệu lực trong chi nhánh này"),
+                    valid_from = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Hiệu lực từ"),
+                    valid_to = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hiệu lực đến (gán quyền tạm thời)"),
+                    granted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cấp quyền"),
+                    note = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Ghi chú lý do cấp"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("user_roles_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "user_roles_branch_id_fkey",
+                        column: x => x.branch_id,
+                        principalTable: "branches",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "user_roles_company_id_fkey",
+                        column: x => x.company_id,
+                        principalTable: "companies",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "user_roles_role_id_fkey",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "user_roles_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Gán vai trò cho user, có thể giới hạn vai trò trong một công ty/chi nhánh và có thời hạn");
+
+            migrationBuilder.CreateTable(
+                name: "verification_tokens",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    purpose = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mục đích"),
+                    token_hash = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Hash của token/OTP (không lưu bản rõ)"),
+                    target = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Email/SĐT nhận token (khi đổi email)"),
+                    attempts = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Số lần nhập sai OTP"),
+                    expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, comment: "Hết hạn"),
+                    used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đã dùng lúc"),
+                    created_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP yêu cầu"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("verification_tokens_pkey", x => x.id);
+                    table.CheckConstraint("verification_tokens_purpose_check", "purpose IN ('RESET_PASSWORD','VERIFY_EMAIL','VERIFY_PHONE','INVITATION','LOGIN_OTP','CHANGE_EMAIL')");
+                    table.ForeignKey(
+                        name: "verification_tokens_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Token một lần: quên mật khẩu, xác thực email/SĐT, lời mời kích hoạt, OTP đăng nhập");
+
+            migrationBuilder.CreateTable(
+                name: "webhook_deliveries",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
+                    endpoint_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Endpoint"),
+                    message_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Event gốc (outbox_messages.id)"),
+                    event_type_code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã event"),
+                    request_url = table.Column<string>(type: "varchar(1000)", nullable: false, comment: "URL thực tế"),
+                    request_headers = table.Column<string>(type: "jsonb", nullable: true, comment: "Header đã gửi (đã che secret)"),
+                    request_body = table.Column<string>(type: "jsonb", nullable: false, comment: "Payload đã gửi"),
+                    attempt_no = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "1", comment: "Lần thử thứ"),
+                    status = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'PENDING'", comment: "Trạng thái"),
+                    response_status = table.Column<short>(type: "smallint", nullable: true, comment: "HTTP status trả về"),
+                    response_body = table.Column<string>(type: "text", nullable: true, comment: "Body trả về (cắt tối đa vài KB)"),
+                    duration_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian phản hồi"),
+                    error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi mạng/timeout"),
+                    next_retry_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Lần retry tiếp"),
+                    completed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hoàn tất lúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("webhook_deliveries_pkey", x => x.id);
+                    table.CheckConstraint("webhook_deliveries_status_check", "status IN ('PENDING','SUCCESS','FAILED','RETRYING','DEAD')");
+                    table.ForeignKey(
+                        name: "webhook_deliveries_endpoint_id_fkey",
+                        column: x => x.endpoint_id,
+                        principalTable: "webhook_endpoints",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Nhật ký từng lần gửi webhook outbound (payload, response, retry)");
+
+            migrationBuilder.CreateTable(
+                name: "work_calendar_exceptions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    calendar_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Lịch"),
+                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Chỉ áp dụng cho chi nhánh này (NULL = toàn lịch)"),
+                    exception_date = table.Column<DateOnly>(type: "date", nullable: false, comment: "Ngày ngoại lệ"),
+                    exception_type = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Loại: nghỉ, làm bù, nửa ngày, giờ đặc biệt"),
+                    holiday_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Liên kết ngày lễ (nếu do lễ)"),
+                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên/lý do"),
+                    is_paid = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Nghỉ có lương"),
+                    start_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ bắt đầu (CUSTOM_HOURS)"),
+                    end_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ kết thúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (iam.users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("work_calendar_exceptions_pkey", x => x.id);
+                    table.CheckConstraint("work_calendar_exceptions_exception_type_check", "exception_type IN ('DAY_OFF','MAKEUP_WORKDAY','HALF_DAY','CUSTOM_HOURS')");
+                    table.ForeignKey(
+                        name: "work_calendar_exceptions_branch_id_fkey",
+                        column: x => x.branch_id,
+                        principalTable: "branches",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "work_calendar_exceptions_calendar_id_fkey",
+                        column: x => x.calendar_id,
+                        principalTable: "work_calendars",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "work_calendar_exceptions_holiday_id_fkey",
+                        column: x => x.holiday_id,
+                        principalTable: "holidays",
+                        principalColumn: "id");
+                },
+                comment: "Ngoại lệ của lịch: nghỉ riêng công ty, ngày làm bù, ngày đổi ca... áp dụng cho cả lịch hoặc riêng chi nhánh");
+
+            migrationBuilder.CreateTable(
+                name: "work_calendar_weekdays",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    calendar_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Lịch"),
+                    day_of_week = table.Column<short>(type: "smallint", nullable: false, comment: "Thứ theo ISO: 1 = Thứ Hai ... 7 = Chủ Nhật"),
+                    is_working_day = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Có làm việc không"),
+                    work_ratio = table.Column<decimal>(type: "numeric(3,2)", nullable: false, defaultValueSql: "1", comment: "Tỷ lệ công (1 = cả ngày, 0.5 = nửa ngày T7)"),
+                    start_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ bắt đầu"),
+                    end_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ kết thúc"),
+                    break_start = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Bắt đầu nghỉ trưa"),
+                    break_end = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Kết thúc nghỉ trưa"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("work_calendar_weekdays_pkey", x => x.id);
+                    table.CheckConstraint("work_calendar_weekdays_day_of_week_check", "day_of_week BETWEEN 1 AND 7");
+                    table.CheckConstraint("work_calendar_weekdays_work_ratio_check", "work_ratio BETWEEN 0 AND 1");
+                    table.ForeignKey(
+                        name: "work_calendar_weekdays_calendar_id_fkey",
+                        column: x => x.calendar_id,
+                        principalTable: "work_calendars",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Mẫu ngày làm việc trong tuần của lịch (T2..CN, giờ vào/ra, nghỉ trưa)");
+
+            migrationBuilder.CreateTable(
                 name: "instances",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -3745,6 +4706,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -3755,607 +4719,57 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "instances_branch_id_fkey",
                         column: x => x.branch_id,
-                        principalSchema: "org",
                         principalTable: "branches",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "org",
                         principalTable: "companies",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_definition_id_fkey",
                         column: x => x.definition_id,
-                        principalSchema: "workflow",
-                        principalTable: "definitions",
+                        principalTable: "workflow_definitions",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_department_id_fkey",
                         column: x => x.department_id,
-                        principalSchema: "org",
                         principalTable: "departments",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_document_type_code_fkey",
                         column: x => x.document_type_code,
-                        principalSchema: "mdm",
                         principalTable: "document_types",
                         principalColumn: "code");
                     table.ForeignKey(
                         name: "instances_on_behalf_of_id_fkey",
                         column: x => x.on_behalf_of_id,
-                        principalSchema: "iam",
                         principalTable: "users",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_requester_id_fkey",
                         column: x => x.requester_id,
-                        principalSchema: "iam",
                         principalTable: "users",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "instances_version_id_fkey",
                         column: x => x.version_id,
-                        principalSchema: "workflow",
                         principalTable: "definition_versions",
                         principalColumn: "id");
                 },
                 comment: "Một lượt chạy quy trình cho một chứng từ cụ thể");
 
             migrationBuilder.CreateTable(
-                name: "password_histories",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    password_hash = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Hash mật khẩu cũ"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm đặt mật khẩu này")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("password_histories_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "password_histories_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Lịch sử mật khẩu để chặn dùng lại N mật khẩu gần nhất");
-
-            migrationBuilder.CreateTable(
-                name: "quotas",
-                schema: "ai",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
-                    module_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phân hệ (NULL = toàn tenant)"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "User (NULL = không giới hạn theo user)"),
-                    period = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Chu kỳ"),
-                    max_requests = table.Column<int>(type: "int", nullable: true, comment: "Số request tối đa"),
-                    max_tokens = table.Column<long>(type: "bigint", nullable: true, comment: "Tổng token tối đa"),
-                    max_cost_usd = table.Column<decimal>(type: "numeric(12,4)", nullable: true, comment: "Chi phí tối đa (USD)"),
-                    alert_threshold_pct = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "80", comment: "Ngưỡng % gửi cảnh báo"),
-                    action_on_exceed = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'BLOCK'", comment: "Khi vượt: chặn, chỉ cảnh báo, chuyển model rẻ hơn"),
-                    downgrade_alias_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Alias rẻ hơn khi DOWNGRADE"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Đang áp dụng"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("quotas_pkey", x => x.id);
-                    table.CheckConstraint("quotas_action_on_exceed_check", "action_on_exceed IN ('BLOCK','ALERT_ONLY','DOWNGRADE')");
-                    table.CheckConstraint("quotas_alert_threshold_pct_check", "alert_threshold_pct BETWEEN 1 AND 100");
-                    table.CheckConstraint("quotas_period_check", "period IN ('DAILY','MONTHLY')");
-                    table.ForeignKey(
-                        name: "quotas_downgrade_alias_id_fkey",
-                        column: x => x.downgrade_alias_id,
-                        principalSchema: "ai",
-                        principalTable: "model_aliases",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "quotas_module_id_fkey",
-                        column: x => x.module_id,
-                        principalSchema: "iam",
-                        principalTable: "modules",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "quotas_tenant_id_fkey",
-                        column: x => x.tenant_id,
-                        principalSchema: "org",
-                        principalTable: "tenants",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "quotas_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id");
-                },
-                comment: "Hạn mức sử dụng AI theo tenant / phân hệ / user theo ngày hoặc tháng");
-
-            migrationBuilder.CreateTable(
-                name: "user_devices",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    device_key = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Định danh thiết bị do client sinh và lưu (fingerprint/installation id)"),
-                    device_name = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Tên thiết bị (iPhone 15 của Hoàng, Chrome - Windows)"),
-                    platform = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Nền tảng"),
-                    os_version = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Phiên bản hệ điều hành"),
-                    app_version = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Phiên bản app"),
-                    user_agent = table.Column<string>(type: "text", nullable: true, comment: "User-Agent gần nhất"),
-                    last_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP gần nhất"),
-                    is_trusted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Thiết bị tin cậy (bỏ qua 2FA)"),
-                    first_seen_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần đầu thấy"),
-                    last_seen_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Lần cuối hoạt động"),
-                    status = table.Column<string>(type: "varchar(20)", nullable: false, defaultValueSql: "'ACTIVE'", comment: "Trạng thái"),
-                    revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm thu hồi"),
-                    revoked_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người thu hồi")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_devices_pkey", x => x.id);
-                    table.CheckConstraint("user_devices_platform_check", "platform IN ('WEB','ANDROID','IOS','DESKTOP','OTHER')");
-                    table.CheckConstraint("user_devices_status_check", "status IN ('ACTIVE','REVOKED','BLOCKED')");
-                    table.ForeignKey(
-                        name: "user_devices_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Thiết bị đã đăng nhập của user (giới hạn thiết bị, thu hồi theo thiết bị)");
-
-            migrationBuilder.CreateTable(
-                name: "user_external_logins",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    provider = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Nhà cung cấp định danh"),
-                    provider_key = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Id user phía provider (sub)"),
-                    provider_email = table.Column<string>(type: "citext", nullable: true, comment: "Email phía provider"),
-                    linked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm liên kết"),
-                    last_used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Lần dùng gần nhất")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_external_logins_pkey", x => x.id);
-                    table.CheckConstraint("user_external_logins_provider_check", "provider IN ('GOOGLE','MICROSOFT','APPLE','ZALO','LDAP','SAML','OIDC')");
-                    table.ForeignKey(
-                        name: "user_external_logins_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Liên kết đăng nhập ngoài (Google, Microsoft, Zalo, Apple) với tài khoản nội bộ");
-
-            migrationBuilder.CreateTable(
-                name: "user_notifications",
-                schema: "notify",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    notification_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Thông báo gốc"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant (denormalize)"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Người nhận"),
-                    module_code = table.Column<string>(type: "varchar(30)", nullable: true, comment: "Phân hệ (lọc theo tab)"),
-                    title = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Tiêu đề đã render"),
-                    body = table.Column<string>(type: "text", nullable: true, comment: "Nội dung đã render"),
-                    icon = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Icon/ảnh đại diện người gửi"),
-                    action_url = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Link khi bấm"),
-                    category = table.Column<string>(type: "varchar(30)", nullable: false, defaultValueSql: "'INFO'", comment: "Nhóm hiển thị"),
-                    is_read = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đã đọc"),
-                    read_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đọc lúc"),
-                    is_pinned = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Ghim"),
-                    is_archived = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đã lưu trữ/ẩn"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm nhận")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_notifications_pkey", x => x.id);
-                    table.CheckConstraint("user_notifications_category_check", "category IN ('INFO','TASK','APPROVAL','WARNING','SYSTEM')");
-                    table.ForeignKey(
-                        name: "user_notifications_notification_id_fkey",
-                        column: x => x.notification_id,
-                        principalSchema: "notify",
-                        principalTable: "notifications",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "user_notifications_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Hộp thư thông báo in-app của từng user (thanh chuông). Đã render sẵn nội dung theo ngôn ngữ user");
-
-            migrationBuilder.CreateTable(
-                name: "user_org_assignments",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    company_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Công ty"),
-                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Chi nhánh"),
-                    department_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Phòng ban"),
-                    job_title = table.Column<string>(type: "varchar(150)", nullable: true, comment: "Chức danh tại đơn vị này"),
-                    is_primary = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Đơn vị chính"),
-                    is_manager = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Là quản lý của đơn vị này"),
-                    valid_from = table.Column<DateOnly>(type: "date", nullable: false, defaultValueSql: "current_date", comment: "Hiệu lực từ ngày"),
-                    valid_to = table.Column<DateOnly>(type: "date", nullable: true, comment: "Hiệu lực đến ngày (NULL = vô thời hạn)"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_org_assignments_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "user_org_assignments_branch_id_fkey",
-                        column: x => x.branch_id,
-                        principalSchema: "org",
-                        principalTable: "branches",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "user_org_assignments_company_id_fkey",
-                        column: x => x.company_id,
-                        principalSchema: "org",
-                        principalTable: "companies",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "user_org_assignments_department_id_fkey",
-                        column: x => x.department_id,
-                        principalSchema: "org",
-                        principalTable: "departments",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "user_org_assignments_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Gán user vào nhiều công ty/chi nhánh/phòng ban (kiêm nhiệm). Dùng để tính Data Scope và chọn ngữ cảnh làm việc");
-
-            migrationBuilder.CreateTable(
-                name: "user_permission_overrides",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    permission_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Quyền"),
-                    effect = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'GRANT'", comment: "GRANT = cấp thêm, DENY = chặn (ưu tiên cao nhất)"),
-                    data_scope = table.Column<string>(type: "varchar(20)", nullable: true, comment: "Phạm vi dữ liệu khi GRANT"),
-                    valid_to = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hết hạn"),
-                    reason = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Lý do"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_permission_overrides_pkey", x => x.id);
-                    table.CheckConstraint("user_permission_overrides_data_scope_check", "data_scope IN ('OWN','DEPARTMENT','DEPARTMENT_TREE','BRANCH','COMPANY','ALL')");
-                    table.CheckConstraint("user_permission_overrides_effect_check", "effect IN ('GRANT','DENY')");
-                    table.ForeignKey(
-                        name: "user_permission_overrides_permission_id_fkey",
-                        column: x => x.permission_id,
-                        principalSchema: "iam",
-                        principalTable: "permissions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "user_permission_overrides_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Quyền gán trực tiếp cho user (cộng thêm hoặc loại trừ so với vai trò)");
-
-            migrationBuilder.CreateTable(
-                name: "user_preferences",
-                schema: "notify",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    event_type_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Sự kiện (NULL = áp dụng mọi sự kiện)"),
-                    channel = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Kênh"),
-                    is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Bật/tắt"),
-                    quiet_start = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Bắt đầu giờ yên lặng (không push)"),
-                    quiet_end = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Kết thúc giờ yên lặng"),
-                    digest_mode = table.Column<string>(type: "varchar(10)", nullable: false, defaultValueSql: "'INSTANT'", comment: "Gửi ngay hay gom tóm tắt"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Cập nhật lúc")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_preferences_pkey", x => x.id);
-                    table.CheckConstraint("user_preferences_channel_check", "channel IN ('IN_APP','PUSH','EMAIL','SMS','ZALO')");
-                    table.CheckConstraint("user_preferences_digest_mode_check", "digest_mode IN ('INSTANT','HOURLY','DAILY')");
-                    table.ForeignKey(
-                        name: "user_preferences_event_type_id_fkey",
-                        column: x => x.event_type_id,
-                        principalSchema: "notify",
-                        principalTable: "event_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "user_preferences_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Tùy chọn nhận thông báo của user theo sự kiện × kênh, giờ yên lặng");
-
-            migrationBuilder.CreateTable(
-                name: "user_recovery_codes",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    code_hash = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Hash mã khôi phục"),
-                    used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm đã dùng (NULL = chưa dùng)"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_recovery_codes_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "user_recovery_codes_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Mã khôi phục 2FA dùng một lần");
-
-            migrationBuilder.CreateTable(
-                name: "user_roles",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    role_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Vai trò"),
-                    company_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Vai trò chỉ có hiệu lực trong công ty này (NULL = mọi công ty)"),
-                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Vai trò chỉ có hiệu lực trong chi nhánh này"),
-                    valid_from = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Hiệu lực từ"),
-                    valid_to = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hiệu lực đến (gán quyền tạm thời)"),
-                    granted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cấp quyền"),
-                    note = table.Column<string>(type: "varchar(500)", nullable: true, comment: "Ghi chú lý do cấp"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("user_roles_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "user_roles_branch_id_fkey",
-                        column: x => x.branch_id,
-                        principalSchema: "org",
-                        principalTable: "branches",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "user_roles_company_id_fkey",
-                        column: x => x.company_id,
-                        principalSchema: "org",
-                        principalTable: "companies",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "user_roles_role_id_fkey",
-                        column: x => x.role_id,
-                        principalSchema: "iam",
-                        principalTable: "roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "user_roles_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Gán vai trò cho user, có thể giới hạn vai trò trong một công ty/chi nhánh và có thời hạn");
-
-            migrationBuilder.CreateTable(
-                name: "verification_tokens",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    purpose = table.Column<string>(type: "varchar(30)", nullable: false, comment: "Mục đích"),
-                    token_hash = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Hash của token/OTP (không lưu bản rõ)"),
-                    target = table.Column<string>(type: "varchar(255)", nullable: true, comment: "Email/SĐT nhận token (khi đổi email)"),
-                    attempts = table.Column<int>(type: "int", nullable: false, defaultValueSql: "0", comment: "Số lần nhập sai OTP"),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, comment: "Hết hạn"),
-                    used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đã dùng lúc"),
-                    created_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP yêu cầu"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("verification_tokens_pkey", x => x.id);
-                    table.CheckConstraint("verification_tokens_purpose_check", "purpose IN ('RESET_PASSWORD','VERIFY_EMAIL','VERIFY_PHONE','INVITATION','LOGIN_OTP','CHANGE_EMAIL')");
-                    table.ForeignKey(
-                        name: "verification_tokens_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Token một lần: quên mật khẩu, xác thực email/SĐT, lời mời kích hoạt, OTP đăng nhập");
-
-            migrationBuilder.CreateTable(
-                name: "webhook_deliveries",
-                schema: "integration",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    endpoint_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Endpoint"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant"),
-                    message_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Event gốc (outbox_messages.id)"),
-                    event_type_code = table.Column<string>(type: "varchar(150)", nullable: false, comment: "Mã event"),
-                    request_url = table.Column<string>(type: "varchar(1000)", nullable: false, comment: "URL thực tế"),
-                    request_headers = table.Column<string>(type: "jsonb", nullable: true, comment: "Header đã gửi (đã che secret)"),
-                    request_body = table.Column<string>(type: "jsonb", nullable: false, comment: "Payload đã gửi"),
-                    attempt_no = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "1", comment: "Lần thử thứ"),
-                    status = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'PENDING'", comment: "Trạng thái"),
-                    response_status = table.Column<short>(type: "smallint", nullable: true, comment: "HTTP status trả về"),
-                    response_body = table.Column<string>(type: "text", nullable: true, comment: "Body trả về (cắt tối đa vài KB)"),
-                    duration_ms = table.Column<int>(type: "int", nullable: true, comment: "Thời gian phản hồi"),
-                    error = table.Column<string>(type: "text", nullable: true, comment: "Lỗi mạng/timeout"),
-                    next_retry_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Lần retry tiếp"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc"),
-                    completed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hoàn tất lúc")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("webhook_deliveries_pkey", x => x.id);
-                    table.CheckConstraint("webhook_deliveries_status_check", "status IN ('PENDING','SUCCESS','FAILED','RETRYING','DEAD')");
-                    table.ForeignKey(
-                        name: "webhook_deliveries_endpoint_id_fkey",
-                        column: x => x.endpoint_id,
-                        principalSchema: "integration",
-                        principalTable: "webhook_endpoints",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Nhật ký từng lần gửi webhook outbound (payload, response, retry)");
-
-            migrationBuilder.CreateTable(
-                name: "work_calendar_exceptions",
-                schema: "mdm",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    calendar_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Lịch"),
-                    branch_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Chỉ áp dụng cho chi nhánh này (NULL = toàn lịch)"),
-                    exception_date = table.Column<DateOnly>(type: "date", nullable: false, comment: "Ngày ngoại lệ"),
-                    exception_type = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Loại: nghỉ, làm bù, nửa ngày, giờ đặc biệt"),
-                    holiday_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Liên kết ngày lễ (nếu do lễ)"),
-                    name = table.Column<string>(type: "varchar(255)", nullable: false, comment: "Tên/lý do"),
-                    is_paid = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Nghỉ có lương"),
-                    start_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ bắt đầu (CUSTOM_HOURS)"),
-                    end_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ kết thúc"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
-                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("work_calendar_exceptions_pkey", x => x.id);
-                    table.CheckConstraint("work_calendar_exceptions_exception_type_check", "exception_type IN ('DAY_OFF','MAKEUP_WORKDAY','HALF_DAY','CUSTOM_HOURS')");
-                    table.ForeignKey(
-                        name: "work_calendar_exceptions_branch_id_fkey",
-                        column: x => x.branch_id,
-                        principalSchema: "org",
-                        principalTable: "branches",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "work_calendar_exceptions_calendar_id_fkey",
-                        column: x => x.calendar_id,
-                        principalSchema: "mdm",
-                        principalTable: "work_calendars",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "work_calendar_exceptions_holiday_id_fkey",
-                        column: x => x.holiday_id,
-                        principalSchema: "mdm",
-                        principalTable: "holidays",
-                        principalColumn: "id");
-                },
-                comment: "Ngoại lệ của lịch: nghỉ riêng công ty, ngày làm bù, ngày đổi ca... áp dụng cho cả lịch hoặc riêng chi nhánh");
-
-            migrationBuilder.CreateTable(
-                name: "work_calendar_weekdays",
-                schema: "mdm",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    calendar_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Lịch"),
-                    day_of_week = table.Column<short>(type: "smallint", nullable: false, comment: "Thứ theo ISO: 1 = Thứ Hai ... 7 = Chủ Nhật"),
-                    is_working_day = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "true", comment: "Có làm việc không"),
-                    work_ratio = table.Column<decimal>(type: "numeric(3,2)", nullable: false, defaultValueSql: "1", comment: "Tỷ lệ công (1 = cả ngày, 0.5 = nửa ngày T7)"),
-                    start_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ bắt đầu"),
-                    end_time = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Giờ kết thúc"),
-                    break_start = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Bắt đầu nghỉ trưa"),
-                    break_end = table.Column<TimeOnly>(type: "time", nullable: true, comment: "Kết thúc nghỉ trưa"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("work_calendar_weekdays_pkey", x => x.id);
-                    table.CheckConstraint("work_calendar_weekdays_day_of_week_check", "day_of_week BETWEEN 1 AND 7");
-                    table.CheckConstraint("work_calendar_weekdays_work_ratio_check", "work_ratio BETWEEN 0 AND 1");
-                    table.ForeignKey(
-                        name: "work_calendar_weekdays_calendar_id_fkey",
-                        column: x => x.calendar_id,
-                        principalSchema: "mdm",
-                        principalTable: "work_calendars",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Mẫu ngày làm việc trong tuần của lịch (T2..CN, giờ vào/ra, nghỉ trưa)");
-
-            migrationBuilder.CreateTable(
                 name: "role_permission_scopes",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     role_permission_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Quyền của vai trò"),
                     scope_type = table.Column<string>(type: "varchar(20)", nullable: false, comment: "Loại đơn vị"),
                     scope_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Id công ty / chi nhánh / phòng ban"),
@@ -4364,6 +4778,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -4373,7 +4790,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "role_permission_scopes_role_permission_id_fkey",
                         column: x => x.role_permission_id,
-                        principalSchema: "iam",
                         principalTable: "role_permissions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -4381,44 +4797,7 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                 comment: "Danh sách đơn vị cụ thể khi data_scope = CUSTOM (VD: chỉ xem chi nhánh HN01 và HN02)");
 
             migrationBuilder.CreateTable(
-                name: "instance_steps",
-                schema: "workflow",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    instance_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Instance"),
-                    step_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Bước định nghĩa"),
-                    iteration = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "1", comment: "Lần chạy thứ mấy của bước (tăng khi bị trả lại)"),
-                    status = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'IN_PROGRESS'", comment: "Trạng thái bước"),
-                    outcome = table.Column<string>(type: "varchar(15)", nullable: true, comment: "Kết quả để chọn transition"),
-                    started_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Bắt đầu"),
-                    due_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hạn xử lý (đã tính theo lịch làm việc)"),
-                    completed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hoàn thành"),
-                    escalated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đã leo thang lúc")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("instance_steps_pkey", x => x.id);
-                    table.CheckConstraint("instance_steps_status_check", "status IN ('WAITING','IN_PROGRESS','APPROVED','REJECTED','RETURNED','SKIPPED','TIMEOUT','CANCELLED')");
-                    table.ForeignKey(
-                        name: "instance_steps_instance_id_fkey",
-                        column: x => x.instance_id,
-                        principalSchema: "workflow",
-                        principalTable: "instances",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "instance_steps_step_id_fkey",
-                        column: x => x.step_id,
-                        principalSchema: "workflow",
-                        principalTable: "steps",
-                        principalColumn: "id");
-                },
-                comment: "Lượt thực thi của từng bước trong instance (một bước có thể lặp lại khi bị trả về)");
-
-            migrationBuilder.CreateTable(
                 name: "user_sessions",
-                schema: "iam",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Session id (claim sid trong token)"),
@@ -4437,7 +4816,15 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, comment: "Hết hạn tuyệt đối"),
                     revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thu hồi lúc"),
                     revoked_reason = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Lý do thu hồi"),
-                    revoked_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người thu hồi")
+                    revoked_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người thu hồi"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -4447,13 +4834,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "user_sessions_device_id_fkey",
                         column: x => x.device_id,
-                        principalSchema: "iam",
                         principalTable: "user_devices",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "user_sessions_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "iam",
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -4461,8 +4846,101 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                 comment: "Phiên đăng nhập SSO (sid). Một phiên trên một thiết bị/client; thu hồi phiên → thu hồi toàn bộ refresh token");
 
             migrationBuilder.CreateTable(
+                name: "instance_steps",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    instance_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Instance"),
+                    step_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Bước định nghĩa"),
+                    iteration = table.Column<short>(type: "smallint", nullable: false, defaultValueSql: "1", comment: "Lần chạy thứ mấy của bước (tăng khi bị trả lại)"),
+                    status = table.Column<string>(type: "varchar(15)", nullable: false, defaultValueSql: "'IN_PROGRESS'", comment: "Trạng thái bước"),
+                    outcome = table.Column<string>(type: "varchar(15)", nullable: true, comment: "Kết quả để chọn transition"),
+                    started_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Bắt đầu"),
+                    due_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hạn xử lý (đã tính theo lịch làm việc)"),
+                    completed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Hoàn thành"),
+                    escalated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đã leo thang lúc"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("instance_steps_pkey", x => x.id);
+                    table.CheckConstraint("instance_steps_status_check", "status IN ('WAITING','IN_PROGRESS','APPROVED','REJECTED','RETURNED','SKIPPED','TIMEOUT','CANCELLED')");
+                    table.ForeignKey(
+                        name: "instance_steps_instance_id_fkey",
+                        column: x => x.instance_id,
+                        principalTable: "instances",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "instance_steps_step_id_fkey",
+                        column: x => x.step_id,
+                        principalTable: "steps",
+                        principalColumn: "id");
+                },
+                comment: "Lượt thực thi của từng bước trong instance (một bước có thể lặp lại khi bị trả về)");
+
+            migrationBuilder.CreateTable(
+                name: "refresh_tokens",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
+                    session_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phiên"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
+                    client_id = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Client được cấp"),
+                    token_hash = table.Column<string>(type: "varchar(128)", nullable: false, comment: "SHA-256 của refresh token (không lưu bản rõ)"),
+                    family_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Họ token: chung cho chuỗi rotation từ một lần đăng nhập"),
+                    parent_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Token trước đó trong chuỗi rotation"),
+                    replaced_by_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Token mới thay thế (khi đã rotate)"),
+                    scopes = table.Column<List<string>>(type: "text[]", nullable: true, comment: "Scope được cấp"),
+                    issued_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm cấp"),
+                    expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, comment: "Hết hạn"),
+                    used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đã dùng để rotate lúc"),
+                    revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thu hồi lúc"),
+                    revoked_reason = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Lý do thu hồi"),
+                    created_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP yêu cầu cấp"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("refresh_tokens_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "refresh_tokens_parent_id_fkey",
+                        column: x => x.parent_id,
+                        principalTable: "refresh_tokens",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "refresh_tokens_session_id_fkey",
+                        column: x => x.session_id,
+                        principalTable: "user_sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "refresh_tokens_user_id_fkey",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                },
+                comment: "Refresh token có rotation: mỗi lần refresh sinh token mới cùng family; dùng lại token cũ → thu hồi cả family (phát hiện đánh cắp)");
+
+            migrationBuilder.CreateTable(
                 name: "tasks",
-                schema: "workflow",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -4484,7 +4962,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     acted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Xử lý lúc"),
                     acted_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP khi xử lý"),
                     acted_via = table.Column<string>(type: "varchar(10)", nullable: true, comment: "Kênh xử lý"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Giao lúc")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Giao lúc"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -4495,100 +4980,46 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_wf_tasks_delegation",
                         column: x => x.delegation_id,
-                        principalSchema: "workflow",
                         principalTable: "delegations",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "tasks_assignee_id_fkey",
                         column: x => x.assignee_id,
-                        principalSchema: "iam",
                         principalTable: "users",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "tasks_instance_id_fkey",
                         column: x => x.instance_id,
-                        principalSchema: "workflow",
                         principalTable: "instances",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "tasks_instance_step_id_fkey",
                         column: x => x.instance_step_id,
-                        principalSchema: "workflow",
                         principalTable: "instance_steps",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "tasks_original_assignee_id_fkey",
                         column: x => x.original_assignee_id,
-                        principalSchema: "iam",
                         principalTable: "users",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "tasks_signature_file_id_fkey",
                         column: x => x.signature_file_id,
-                        principalSchema: "storage",
                         principalTable: "files",
                         principalColumn: "id");
                 },
                 comment: "Nhiệm vụ duyệt giao cho từng người (danh sách \"Việc chờ tôi duyệt\")");
 
             migrationBuilder.CreateTable(
-                name: "refresh_tokens",
-                schema: "iam",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    session_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phiên"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "User"),
-                    client_id = table.Column<string>(type: "varchar(100)", nullable: true, comment: "Client được cấp"),
-                    token_hash = table.Column<string>(type: "varchar(128)", nullable: false, comment: "SHA-256 của refresh token (không lưu bản rõ)"),
-                    family_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Họ token: chung cho chuỗi rotation từ một lần đăng nhập"),
-                    parent_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Token trước đó trong chuỗi rotation"),
-                    replaced_by_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Token mới thay thế (khi đã rotate)"),
-                    scopes = table.Column<List<string>>(type: "text[]", nullable: true, comment: "Scope được cấp"),
-                    issued_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm cấp"),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, comment: "Hết hạn"),
-                    used_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Đã dùng để rotate lúc"),
-                    revoked_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thu hồi lúc"),
-                    revoked_reason = table.Column<string>(type: "varchar(50)", nullable: true, comment: "Lý do thu hồi"),
-                    created_ip = table.Column<IPAddress>(type: "inet", nullable: true, comment: "IP yêu cầu cấp")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("refresh_tokens_pkey", x => x.id);
-                    table.ForeignKey(
-                        name: "refresh_tokens_parent_id_fkey",
-                        column: x => x.parent_id,
-                        principalSchema: "iam",
-                        principalTable: "refresh_tokens",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "refresh_tokens_session_id_fkey",
-                        column: x => x.session_id,
-                        principalSchema: "iam",
-                        principalTable: "user_sessions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "refresh_tokens_user_id_fkey",
-                        column: x => x.user_id,
-                        principalSchema: "iam",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                },
-                comment: "Refresh token có rotation: mỗi lần refresh sinh token mới cùng family; dùng lại token cũ → thu hồi cả family (phát hiện đánh cắp)");
-
-            migrationBuilder.CreateTable(
                 name: "kb_chunks",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
                     document_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tài liệu"),
                     knowledge_base_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Kho (denormalize để lọc nhanh)"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant"),
                     chunk_index = table.Column<int>(type: "int", nullable: false, comment: "Thứ tự chunk trong tài liệu"),
                     content = table.Column<string>(type: "text", nullable: false, comment: "Nội dung chunk"),
                     heading_path = table.Column<string>(type: "text", nullable: true, comment: "Đường dẫn tiêu đề (Chương 2 > Điều 5) để trích dẫn"),
@@ -4596,7 +5027,14 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     token_count = table.Column<int>(type: "int", nullable: true, comment: "Số token"),
                     metadata = table.Column<string>(type: "jsonb", nullable: false, defaultValueSql: "'{}'", comment: "Metadata lọc (department, tags...)"),
                     content_tsv = table.Column<NpgsqlTsVector>(type: "tsvector", nullable: true, computedColumnSql: "to_tsvector('simple', content)", stored: true, comment: "Chỉ mục full-text (cấu hình 'simple' phù hợp tiếng Việt)"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc")
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Tạo lúc"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -4606,12 +5044,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "kb_documents",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
-                    knowledge_base_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Kho tri thức"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Tenant (denormalize)"),
+                    knowledge_base_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Kho tri thức"),
                     title = table.Column<string>(type: "varchar(500)", nullable: false, comment: "Tiêu đề"),
                     source_type = table.Column<string>(type: "varchar(10)", nullable: false, comment: "Nguồn: file, URL, văn bản nhập tay, bản ghi nghiệp vụ"),
                     file_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "File gốc"),
@@ -4644,7 +5081,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "kb_documents_file_id_fkey",
                         column: x => x.file_id,
-                        principalSchema: "storage",
                         principalTable: "files",
                         principalColumn: "id");
                 },
@@ -4652,10 +5088,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "knowledge_base_access",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     knowledge_base_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Kho tri thức"),
                     principal_type = table.Column<string>(type: "varchar(15)", nullable: false, comment: "Loại đối tượng"),
                     principal_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Id đối tượng"),
@@ -4664,6 +5100,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -4675,7 +5114,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "knowledge_bases",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -4710,19 +5148,16 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "knowledge_bases_embedding_model_id_fkey",
                         column: x => x.embedding_model_id,
-                        principalSchema: "ai",
                         principalTable: "models",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "knowledge_bases_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "knowledge_bases_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -4730,19 +5165,27 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "prompt_guardrails",
-                schema: "ai",
                 columns: table => new
                 {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính (UUID v7)"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     prompt_version_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Phiên bản prompt"),
-                    guardrail_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Guardrail")
+                    guardrail_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Guardrail"),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false, defaultValueSql: "now()", comment: "Thời điểm tạo bản ghi"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (users.id); NULL nếu hệ thống tạo"),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("prompt_guardrails_pkey", x => new { x.prompt_version_id, x.guardrail_id });
+                    table.PrimaryKey("prompt_guardrails_pkey", x => x.id);
                     table.ForeignKey(
                         name: "prompt_guardrails_guardrail_id_fkey",
                         column: x => x.guardrail_id,
-                        principalSchema: "ai",
                         principalTable: "guardrail_policies",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -4751,7 +5194,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "prompt_templates",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
@@ -4777,13 +5219,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "prompt_templates_module_id_fkey",
                         column: x => x.module_id,
-                        principalSchema: "iam",
                         principalTable: "modules",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "prompt_templates_tenant_id_fkey",
                         column: x => x.tenant_id,
-                        principalSchema: "org",
                         principalTable: "tenants",
                         principalColumn: "id");
                 },
@@ -4791,10 +5231,10 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "prompt_versions",
-                schema: "ai",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()", comment: "Khóa chính"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true, comment: "Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống"),
                     template_id = table.Column<Guid>(type: "uuid", nullable: false, comment: "Prompt"),
                     version_no = table.Column<int>(type: "int", nullable: false, comment: "Số phiên bản"),
                     system_prompt = table.Column<string>(type: "text", nullable: true, comment: "System prompt"),
@@ -4815,6 +5255,9 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     created_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người tạo (iam.users.id); NULL nếu hệ thống tạo"),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm cập nhật gần nhất (trigger tự gán)"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người cập nhật gần nhất (iam.users.id)"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValueSql: "false", comment: "Cờ xóa mềm (true = đã xóa)"),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true, comment: "Thời điểm xóa mềm"),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true, comment: "Người xóa mềm (users.id)"),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
@@ -4826,13 +5269,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "prompt_versions_model_alias_id_fkey",
                         column: x => x.model_alias_id,
-                        principalSchema: "ai",
                         principalTable: "model_aliases",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "prompt_versions_template_id_fkey",
                         column: x => x.template_id,
-                        principalSchema: "ai",
                         principalTable: "prompt_templates",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -4841,27 +5282,23 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_action_logs_instance",
-                schema: "workflow",
                 table: "action_logs",
                 columns: new[] { "instance_id", "created_at" });
 
             migrationBuilder.CreateIndex(
                 name: "uq_admin_unit_mapping",
-                schema: "mdm",
                 table: "administrative_unit_mappings",
                 columns: new[] { "old_unit_id", "new_unit_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_admin_units_level",
-                schema: "mdm",
                 table: "administrative_units",
                 columns: new[] { "country_code", "level" },
                 filter: "is_active");
 
             migrationBuilder.CreateIndex(
                 name: "ix_admin_units_name_trgm",
-                schema: "mdm",
                 table: "administrative_units",
                 column: "full_name")
                 .Annotation("Npgsql:IndexMethod", "gin")
@@ -4869,89 +5306,112 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_admin_units_parent",
-                schema: "mdm",
                 table: "administrative_units",
                 column: "parent_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_admin_unit_code",
-                schema: "mdm",
                 table: "administrative_units",
                 columns: new[] { "country_code", "code" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ai_providers_code_key",
+                table: "ai_providers",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "api_keys_key_hash_key",
-                schema: "integration",
                 table: "api_keys",
                 column: "key_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "api_keys_key_prefix_key",
-                schema: "integration",
                 table: "api_keys",
                 column: "key_prefix",
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "api_request_logs_id_occurred_at_key",
+                table: "api_request_logs",
+                columns: new[] { "id", "occurred_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_api_logs_errors",
+                table: "api_request_logs",
+                column: "occurred_at",
+                descending: new bool[0],
+                filter: "status_code >= 500");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_api_logs_tenant",
+                table: "api_request_logs",
+                columns: new[] { "tenant_id", "occurred_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_api_logs_trace",
+                table: "api_request_logs",
+                column: "trace_id");
+
+            migrationBuilder.CreateIndex(
+                name: "api_scopes_code_key",
+                table: "api_scopes",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "uq_audit_policies",
-                schema: "audit",
                 table: "audit_policies",
                 columns: new[] { "module_code", "entity_type" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "banks_code_key",
-                schema: "mdm",
                 table: "banks",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_branches_company",
-                schema: "org",
                 table: "branches",
                 column: "company_id",
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "uq_buckets",
-                schema: "storage",
                 table: "buckets",
                 columns: new[] { "provider_id", "name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "clusters_code_key",
-                schema: "gateway",
                 table: "clusters",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_companies_parent",
-                schema: "org",
                 table: "companies",
                 column: "parent_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_companies_path",
-                schema: "org",
                 table: "companies",
                 column: "path")
                 .Annotation("Npgsql:IndexOperators", new[] { "text_pattern_ops" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_ai_conversations_user",
-                schema: "ai",
                 table: "conversations",
                 columns: new[] { "user_id", "last_message_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "uq_cors_policies",
-                schema: "gateway",
                 table: "cors_policies",
                 columns: new[] { "tenant_id", "code" },
                 unique: true)
@@ -4959,110 +5419,112 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "countries_alpha3_code_key",
-                schema: "mdm",
                 table: "countries",
                 column: "alpha3_code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "data_change_logs_id_changed_at_key",
+                table: "data_change_logs",
+                columns: new[] { "id", "changed_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_data_change_entity",
+                table: "data_change_logs",
+                columns: new[] { "entity_type", "entity_id", "changed_at" },
+                descending: new[] { false, false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_data_change_tenant",
+                table: "data_change_logs",
+                columns: new[] { "tenant_id", "module_code", "changed_at" },
+                descending: new[] { false, false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_data_change_user",
+                table: "data_change_logs",
+                columns: new[] { "changed_by", "changed_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
                 name: "uq_wf_versions",
-                schema: "workflow",
                 table: "definition_versions",
                 columns: new[] { "definition_id", "version_no" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "definitions_code_key",
-                schema: "job",
-                table: "definitions",
-                column: "code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_wf_definitions_doc",
-                schema: "workflow",
-                table: "definitions",
-                columns: new[] { "tenant_id", "document_type_code" },
-                filter: "is_active AND NOT is_deleted");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_wf_delegations_active",
-                schema: "workflow",
                 table: "delegations",
                 columns: new[] { "delegator_id", "start_at", "end_at" },
                 filter: "status = 'ACTIVE'");
 
             migrationBuilder.CreateIndex(
                 name: "ix_deliveries_notification",
-                schema: "notify",
                 table: "deliveries",
                 column: "notification_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_deliveries_queue",
-                schema: "notify",
                 table: "deliveries",
                 column: "next_attempt_at",
                 filter: "status IN ('PENDING','FAILED')");
 
             migrationBuilder.CreateIndex(
+                name: "delivery_attachments_delivery_id_file_id_key",
+                table: "delivery_attachments",
+                columns: new[] { "delivery_id", "file_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_departments_branch",
-                schema: "org",
                 table: "departments",
                 column: "branch_id",
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "ix_departments_parent",
-                schema: "org",
                 table: "departments",
                 column: "parent_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_departments_path",
-                schema: "org",
                 table: "departments",
                 column: "path")
                 .Annotation("Npgsql:IndexOperators", new[] { "text_pattern_ops" });
 
             migrationBuilder.CreateIndex(
                 name: "uq_gateway_destinations",
-                schema: "gateway",
                 table: "destinations",
                 columns: new[] { "cluster_id", "name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_device_tokens_user",
-                schema: "notify",
                 table: "device_tokens",
                 column: "user_id",
                 filter: "is_active");
 
             migrationBuilder.CreateIndex(
+                name: "error_codes_code_key",
+                table: "error_codes",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "uq_event_subscriptions",
-                schema: "integration",
                 table: "event_subscriptions",
                 columns: new[] { "event_type_code", "consumer_service" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "event_types_code_key",
-                schema: "notify",
-                table: "event_types",
-                column: "code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "ix_exchange_rates_lookup",
-                schema: "mdm",
                 table: "exchange_rates",
                 columns: new[] { "from_currency", "to_currency", "rate_type", "effective_at" },
                 descending: new[] { false, false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "uq_exchange_rates",
-                schema: "mdm",
                 table: "exchange_rates",
                 columns: new[] { "tenant_id", "from_currency", "to_currency", "rate_type", "effective_at" },
                 unique: true)
@@ -5070,132 +5532,137 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_job_executions_job",
-                schema: "job",
                 table: "executions",
                 columns: new[] { "job_id", "started_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "ix_job_executions_status",
-                schema: "job",
                 table: "executions",
                 columns: new[] { "status", "started_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "ix_external_mappings_internal",
-                schema: "integration",
                 table: "external_mappings",
                 columns: new[] { "entity_type", "internal_id" });
 
             migrationBuilder.CreateIndex(
                 name: "uq_external_mapping_ext",
-                schema: "integration",
                 table: "external_mappings",
                 columns: new[] { "tenant_id", "external_system", "entity_type", "external_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_feature_flag_rules",
-                schema: "config",
                 table: "feature_flag_rules",
                 columns: new[] { "flag_key", "scope_type", "scope_value" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "file_access_logs_id_occurred_at_key",
+                table: "file_access_logs",
+                columns: new[] { "id", "occurred_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_file_access_logs_file",
+                table: "file_access_logs",
+                columns: new[] { "file_id", "occurred_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
                 name: "file_share_links_token_hash_key",
-                schema: "storage",
                 table: "file_share_links",
                 column: "token_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_file_variants",
-                schema: "storage",
                 table: "file_variants",
                 columns: new[] { "file_id", "variant_name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_files_checksum",
-                schema: "storage",
                 table: "files",
                 columns: new[] { "tenant_id", "checksum_sha256" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_files_entity",
-                schema: "storage",
                 table: "files",
                 columns: new[] { "module_code", "entity_type", "entity_id" },
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "ix_files_temp_expires",
-                schema: "storage",
                 table: "files",
                 column: "expires_at",
                 filter: "status = 'TEMP'");
 
             migrationBuilder.CreateIndex(
                 name: "ix_files_tenant_created",
-                schema: "storage",
                 table: "files",
                 columns: new[] { "tenant_id", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "uq_files_object",
-                schema: "storage",
                 table: "files",
                 columns: new[] { "bucket_id", "object_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "gateway_clients_key_hash_key",
-                schema: "ai",
                 table: "gateway_clients",
                 column: "key_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "gateway_clients_key_prefix_key",
-                schema: "ai",
                 table: "gateway_clients",
                 column: "key_prefix",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_guardrails",
-                schema: "ai",
                 table: "guardrail_policies",
                 columns: new[] { "tenant_id", "code" },
                 unique: true)
                 .Annotation("Npgsql:NullsDistinct", false);
 
             migrationBuilder.CreateIndex(
+                name: "health_checks_id_checked_at_key",
+                table: "health_checks",
+                columns: new[] { "id", "checked_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_health_checks_service",
+                table: "health_checks",
+                columns: new[] { "service_id", "checked_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_holidays_date",
-                schema: "mdm",
                 table: "holidays",
                 columns: new[] { "country_code", "holiday_date" },
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "ix_holidays_tenant_year",
-                schema: "mdm",
                 table: "holidays",
                 columns: new[] { "tenant_id", "year" },
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "ix_inbound_requests_source",
-                schema: "integration",
                 table: "inbound_requests",
                 columns: new[] { "source_id", "received_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "uq_inbound_requests_external",
-                schema: "integration",
                 table: "inbound_requests",
                 columns: new[] { "source_id", "external_id" },
                 unique: true,
@@ -5203,102 +5670,123 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "inbound_sources_endpoint_token_key",
-                schema: "integration",
                 table: "inbound_sources",
                 column: "endpoint_token",
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "inbox_messages_consumer_service_message_id_key",
+                table: "inbox_messages",
+                columns: new[] { "consumer_service", "message_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_wf_instance_steps_due",
-                schema: "workflow",
                 table: "instance_steps",
                 column: "due_at",
                 filter: "status = 'IN_PROGRESS'");
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_instance_steps_instance",
-                schema: "workflow",
                 table: "instance_steps",
                 column: "instance_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_instances_document",
-                schema: "workflow",
                 table: "instances",
                 columns: new[] { "document_type_code", "document_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_instances_requester",
-                schema: "workflow",
                 table: "instances",
                 columns: new[] { "requester_id", "submitted_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_instances_status",
-                schema: "workflow",
                 table: "instances",
                 columns: new[] { "tenant_id", "status", "submitted_at" },
                 descending: new[] { false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "uq_wf_instances_active_doc",
-                schema: "workflow",
                 table: "instances",
                 columns: new[] { "document_type_code", "document_id" },
                 unique: true,
                 filter: "status = 'PENDING'");
 
             migrationBuilder.CreateIndex(
+                name: "job_definitions_code_key",
+                table: "job_definitions",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ai_kb_chunks_kb",
-                schema: "ai",
                 table: "kb_chunks",
                 column: "knowledge_base_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_ai_kb_chunks_tsv",
-                schema: "ai",
                 table: "kb_chunks",
                 column: "content_tsv")
                 .Annotation("Npgsql:IndexMethod", "gin");
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_kb_chunks",
-                schema: "ai",
                 table: "kb_chunks",
                 columns: new[] { "document_id", "chunk_index" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_ai_kb_documents_kb",
-                schema: "ai",
                 table: "kb_documents",
                 column: "knowledge_base_id",
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_kb_access",
-                schema: "ai",
                 table: "knowledge_base_access",
                 columns: new[] { "knowledge_base_id", "principal_type", "principal_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_login_logs_ip",
+                table: "login_logs",
+                columns: new[] { "ip_address", "occurred_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_login_logs_tenant",
+                table: "login_logs",
+                columns: new[] { "tenant_id", "occurred_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_login_logs_user",
+                table: "login_logs",
+                columns: new[] { "user_id", "occurred_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "login_logs_id_occurred_at_key",
+                table: "login_logs",
+                columns: new[] { "id", "occurred_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ai_messages_conversation",
-                schema: "ai",
                 table: "messages",
                 columns: new[] { "conversation_id", "created_at" });
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_alias_targets",
-                schema: "ai",
                 table: "model_alias_targets",
                 columns: new[] { "alias_id", "model_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_model_aliases",
-                schema: "ai",
                 table: "model_aliases",
                 columns: new[] { "tenant_id", "code" },
                 unique: true)
@@ -5306,42 +5794,42 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_models",
-                schema: "ai",
                 table: "models",
                 columns: new[] { "provider_id", "model_code" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "modules_code_key",
-                schema: "iam",
                 table: "modules",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_entity",
-                schema: "notify",
                 table: "notifications",
                 columns: new[] { "entity_type", "entity_id" });
 
             migrationBuilder.CreateIndex(
                 name: "uq_notifications_idem",
-                schema: "notify",
                 table: "notifications",
                 columns: new[] { "tenant_id", "idempotency_key" },
                 unique: true,
                 filter: "idempotency_key IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "notify_event_types_code_key",
+                table: "notify_event_types",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "uq_numbering_counters",
-                schema: "mdm",
                 table: "numbering_counters",
                 columns: new[] { "rule_id", "period_key", "scope_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_numbering_rules_scope",
-                schema: "mdm",
                 table: "numbering_rules",
                 columns: new[] { "tenant_id", "document_type_code", "company_id", "branch_id" },
                 unique: true,
@@ -5350,48 +5838,47 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "oauth_clients_client_id_key",
-                schema: "iam",
                 table: "oauth_clients",
                 column: "client_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_outbox_aggregate",
-                schema: "integration",
                 table: "outbox_messages",
                 columns: new[] { "aggregate_type", "aggregate_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_outbox_pending",
-                schema: "integration",
                 table: "outbox_messages",
                 column: "next_attempt_at",
                 filter: "status IN ('PENDING','FAILED')");
 
             migrationBuilder.CreateIndex(
                 name: "ix_password_histories_user",
-                schema: "iam",
                 table: "password_histories",
                 columns: new[] { "user_id", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "permissions_code_key",
-                schema: "iam",
                 table: "permissions",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_permissions_resource_action",
-                schema: "iam",
                 table: "permissions",
                 columns: new[] { "resource_id", "action_code" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "prompt_guardrails_prompt_version_id_guardrail_id_key",
+                table: "prompt_guardrails",
+                columns: new[] { "prompt_version_id", "guardrail_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "uq_ai_prompt_templates",
-                schema: "ai",
                 table: "prompt_templates",
                 columns: new[] { "tenant_id", "code" },
                 unique: true,
@@ -5400,29 +5887,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_prompt_versions",
-                schema: "ai",
                 table: "prompt_versions",
                 columns: new[] { "template_id", "version_no" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "providers_code_key",
-                schema: "ai",
-                table: "providers",
-                column: "code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "uq_storage_providers_code",
-                schema: "storage",
-                table: "providers",
-                columns: new[] { "tenant_id", "code" },
-                unique: true)
-                .Annotation("Npgsql:NullsDistinct", false);
-
-            migrationBuilder.CreateIndex(
                 name: "uq_push_configs",
-                schema: "notify",
                 table: "push_configs",
                 columns: new[] { "tenant_id", "app_code", "provider" },
                 unique: true)
@@ -5430,7 +5900,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_ai_quotas",
-                schema: "ai",
                 table: "quotas",
                 columns: new[] { "tenant_id", "module_id", "user_id", "period" },
                 unique: true)
@@ -5438,101 +5907,110 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "rate_limit_policies_code_key",
-                schema: "gateway",
                 table: "rate_limit_policies",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_expires",
-                schema: "iam",
                 table: "refresh_tokens",
                 column: "expires_at");
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_family",
-                schema: "iam",
                 table: "refresh_tokens",
                 column: "family_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_session",
-                schema: "iam",
                 table: "refresh_tokens",
                 column: "session_id",
                 filter: "revoked_at IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "refresh_tokens_token_hash_key",
-                schema: "iam",
                 table: "refresh_tokens",
                 column: "token_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_resources_code",
-                schema: "iam",
                 table: "resources",
                 columns: new[] { "module_id", "code" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_revoked_tokens_expires",
-                schema: "iam",
                 table: "revoked_access_tokens",
                 column: "expires_at");
 
             migrationBuilder.CreateIndex(
+                name: "revoked_access_tokens_jti_key",
+                table: "revoked_access_tokens",
+                column: "jti",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "uq_role_permission_scopes",
-                schema: "iam",
                 table: "role_permission_scopes",
                 columns: new[] { "role_permission_id", "scope_type", "scope_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_role_permissions_perm",
-                schema: "iam",
                 table: "role_permissions",
                 column: "permission_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_role_permissions",
-                schema: "iam",
                 table: "role_permissions",
                 columns: new[] { "role_id", "permission_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "routes_code_key",
-                schema: "gateway",
                 table: "routes",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_security_events_target",
+                table: "security_events",
+                columns: new[] { "target_user_id", "occurred_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_security_events_tenant",
+                table: "security_events",
+                columns: new[] { "tenant_id", "event_type", "occurred_at" },
+                descending: new[] { false, false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "security_events_id_occurred_at_key",
+                table: "security_events",
+                columns: new[] { "id", "occurred_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "security_header_policies_code_key",
-                schema: "gateway",
                 table: "security_header_policies",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "security_policies_tenant_id_key",
-                schema: "iam",
                 table: "security_policies",
                 column: "tenant_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "services_code_key",
-                schema: "monitor",
                 table: "services",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_setting_values",
-                schema: "config",
                 table: "setting_values",
                 columns: new[] { "setting_key", "scope_type", "scope_id" },
                 unique: true)
@@ -5540,28 +6018,31 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "signing_keys_kid_key",
-                schema: "iam",
                 table: "signing_keys",
                 column: "kid",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_wf_steps",
-                schema: "workflow",
                 table: "steps",
                 columns: new[] { "version_id", "code" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "uq_storage_providers_code",
+                table: "storage_providers",
+                columns: new[] { "tenant_id", "code" },
+                unique: true)
+                .Annotation("Npgsql:NullsDistinct", false);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_wf_tasks_due",
-                schema: "workflow",
                 table: "tasks",
                 column: "due_at",
                 filter: "status = 'PENDING'");
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_tasks_inbox",
-                schema: "workflow",
                 table: "tasks",
                 columns: new[] { "assignee_id", "created_at" },
                 descending: new[] { false, true },
@@ -5569,13 +6050,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_tasks_instance",
-                schema: "workflow",
                 table: "tasks",
                 column: "instance_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_tax_rates",
-                schema: "mdm",
                 table: "tax_rates",
                 columns: new[] { "tenant_id", "code", "effective_from" },
                 unique: true)
@@ -5583,7 +6062,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_notify_templates",
-                schema: "notify",
                 table: "templates",
                 columns: new[] { "tenant_id", "event_type_id", "channel", "locale" },
                 unique: true,
@@ -5592,41 +6070,35 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_tenant_modules",
-                schema: "iam",
                 table: "tenant_modules",
                 columns: new[] { "tenant_id", "module_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_job_tenant_overrides",
-                schema: "job",
                 table: "tenant_overrides",
                 columns: new[] { "job_id", "tenant_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_tenant_rate_limits",
-                schema: "gateway",
                 table: "tenant_rate_limits",
                 columns: new[] { "tenant_id", "policy_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_wf_transitions_from",
-                schema: "workflow",
                 table: "transitions",
                 columns: new[] { "from_step_id", "priority" });
 
             migrationBuilder.CreateIndex(
                 name: "uq_translation_keys",
-                schema: "config",
                 table: "translation_keys",
                 columns: new[] { "namespace", "key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_translations",
-                schema: "config",
                 table: "translations",
                 columns: new[] { "key_id", "language_code", "tenant_id" },
                 unique: true)
@@ -5634,14 +6106,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uom_categories_code_key",
-                schema: "mdm",
                 table: "uom_categories",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_uom_conversions",
-                schema: "mdm",
                 table: "uom_conversions",
                 columns: new[] { "tenant_id", "from_uom_id", "to_uom_id" },
                 unique: true)
@@ -5649,29 +6119,49 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_upload_policies",
-                schema: "storage",
                 table: "upload_policies",
                 columns: new[] { "tenant_id", "category" },
                 unique: true)
                 .Annotation("Npgsql:NullsDistinct", false);
 
             migrationBuilder.CreateIndex(
+                name: "usage_daily_usage_date_tenant_id_module_code_model_id_key",
+                table: "usage_daily",
+                columns: new[] { "usage_date", "tenant_id", "module_code", "model_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_usage_module",
+                table: "usage_logs",
+                columns: new[] { "module_code", "created_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_usage_tenant",
+                table: "usage_logs",
+                columns: new[] { "tenant_id", "created_at" },
+                descending: new[] { false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "usage_logs_id_created_at_key",
+                table: "usage_logs",
+                columns: new[] { "id", "created_at" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "uq_user_devices",
-                schema: "iam",
                 table: "user_devices",
                 columns: new[] { "user_id", "device_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_external_login",
-                schema: "iam",
                 table: "user_external_logins",
                 columns: new[] { "provider", "provider_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_notifications_inbox",
-                schema: "notify",
                 table: "user_notifications",
                 columns: new[] { "user_id", "created_at" },
                 descending: new[] { false, true },
@@ -5679,26 +6169,22 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_notifications_unread",
-                schema: "notify",
                 table: "user_notifications",
                 column: "user_id",
                 filter: "NOT is_read");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_org_dept",
-                schema: "iam",
                 table: "user_org_assignments",
                 column: "department_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_org_user",
-                schema: "iam",
                 table: "user_org_assignments",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_user_org_primary",
-                schema: "iam",
                 table: "user_org_assignments",
                 column: "user_id",
                 unique: true,
@@ -5706,14 +6192,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_user_permission_overrides",
-                schema: "iam",
                 table: "user_permission_overrides",
                 columns: new[] { "user_id", "permission_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_user_notify_prefs",
-                schema: "notify",
                 table: "user_preferences",
                 columns: new[] { "user_id", "event_type_id", "channel" },
                 unique: true)
@@ -5721,20 +6205,17 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_recovery_codes_user",
-                schema: "iam",
                 table: "user_recovery_codes",
                 column: "user_id",
                 filter: "used_at IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_roles_role",
-                schema: "iam",
                 table: "user_roles",
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_user_roles",
-                schema: "iam",
                 table: "user_roles",
                 columns: new[] { "user_id", "role_id", "company_id", "branch_id" },
                 unique: true)
@@ -5742,33 +6223,28 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_sessions_expires",
-                schema: "iam",
                 table: "user_sessions",
                 column: "expires_at");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_sessions_user_active",
-                schema: "iam",
                 table: "user_sessions",
                 column: "user_id",
                 filter: "revoked_at IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_department",
-                schema: "iam",
                 table: "users",
                 column: "department_id",
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_employee",
-                schema: "iam",
                 table: "users",
                 column: "employee_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_name_trgm",
-                schema: "iam",
                 table: "users",
                 column: "full_name")
                 .Annotation("Npgsql:IndexMethod", "gin")
@@ -5776,14 +6252,12 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_phone",
-                schema: "iam",
                 table: "users",
                 columns: new[] { "tenant_id", "phone" },
                 filter: "NOT is_deleted");
 
             migrationBuilder.CreateIndex(
                 name: "uq_users_email",
-                schema: "iam",
                 table: "users",
                 columns: new[] { "tenant_id", "email" },
                 unique: true,
@@ -5792,7 +6266,6 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_users_username",
-                schema: "iam",
                 table: "users",
                 columns: new[] { "tenant_id", "username" },
                 unique: true,
@@ -5801,34 +6274,29 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_verification_tokens_lookup",
-                schema: "iam",
                 table: "verification_tokens",
                 column: "token_hash",
                 filter: "used_at IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_verification_tokens_user",
-                schema: "iam",
                 table: "verification_tokens",
                 columns: new[] { "user_id", "purpose" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_deliveries_endpoint",
-                schema: "integration",
                 table: "webhook_deliveries",
                 columns: new[] { "endpoint_id", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_deliveries_retry",
-                schema: "integration",
                 table: "webhook_deliveries",
                 column: "next_retry_at",
                 filter: "status = 'RETRYING'");
 
             migrationBuilder.CreateIndex(
                 name: "uq_work_calendar_exceptions",
-                schema: "mdm",
                 table: "work_calendar_exceptions",
                 columns: new[] { "calendar_id", "exception_date", "branch_id" },
                 unique: true,
@@ -5837,422 +6305,331 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_work_calendar_weekdays",
-                schema: "mdm",
                 table: "work_calendar_weekdays",
                 columns: new[] { "calendar_id", "day_of_week" },
                 unique: true);
 
+            migrationBuilder.CreateIndex(
+                name: "ix_wf_definitions_doc",
+                table: "workflow_definitions",
+                columns: new[] { "tenant_id", "document_type_code" },
+                filter: "is_active AND NOT is_deleted");
+
             migrationBuilder.AddForeignKey(
                 name: "action_logs_instance_id_fkey",
-                schema: "workflow",
                 table: "action_logs",
                 column: "instance_id",
-                principalSchema: "workflow",
                 principalTable: "instances",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "action_logs_instance_step_id_fkey",
-                schema: "workflow",
                 table: "action_logs",
                 column: "instance_step_id",
-                principalSchema: "workflow",
                 principalTable: "instance_steps",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "action_logs_task_id_fkey",
-                schema: "workflow",
                 table: "action_logs",
                 column: "task_id",
-                principalSchema: "workflow",
                 principalTable: "tasks",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "api_keys_act_as_user_id_fkey",
-                schema: "integration",
                 table: "api_keys",
                 column: "act_as_user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "api_keys_owner_user_id_fkey",
-                schema: "integration",
                 table: "api_keys",
                 column: "owner_user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "api_keys_oauth_client_id_fkey",
-                schema: "integration",
                 table: "api_keys",
                 column: "oauth_client_id",
-                principalSchema: "iam",
                 principalTable: "oauth_clients",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "api_keys_tenant_id_fkey",
-                schema: "integration",
                 table: "api_keys",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "branches_company_id_fkey",
-                schema: "org",
                 table: "branches",
                 column: "company_id",
-                principalSchema: "org",
                 principalTable: "companies",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "branches_tenant_id_fkey",
-                schema: "org",
                 table: "branches",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_branches_calendar",
-                schema: "org",
                 table: "branches",
                 column: "work_calendar_id",
-                principalSchema: "mdm",
                 principalTable: "work_calendars",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_branches_manager",
-                schema: "org",
                 table: "branches",
                 column: "manager_user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "buckets_provider_id_fkey",
-                schema: "storage",
                 table: "buckets",
                 column: "provider_id",
-                principalSchema: "storage",
-                principalTable: "providers",
+                principalTable: "storage_providers",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "companies_tenant_id_fkey",
-                schema: "org",
                 table: "companies",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_companies_calendar",
-                schema: "org",
                 table: "companies",
                 column: "work_calendar_id",
-                principalSchema: "mdm",
                 principalTable: "work_calendars",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_companies_logo",
-                schema: "org",
                 table: "companies",
                 column: "logo_file_id",
-                principalSchema: "storage",
                 principalTable: "files",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "connections_tenant_id_fkey",
-                schema: "integration",
                 table: "connections",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "conversations_knowledge_base_id_fkey",
-                schema: "ai",
                 table: "conversations",
                 column: "knowledge_base_id",
-                principalSchema: "ai",
                 principalTable: "knowledge_bases",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "conversations_user_id_fkey",
-                schema: "ai",
                 table: "conversations",
                 column: "user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "cors_policies_tenant_id_fkey",
-                schema: "gateway",
                 table: "cors_policies",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "definition_versions_definition_id_fkey",
-                schema: "workflow",
                 table: "definition_versions",
                 column: "definition_id",
-                principalSchema: "workflow",
-                principalTable: "definitions",
+                principalTable: "workflow_definitions",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
-                name: "definitions_department_id_fkey",
-                schema: "workflow",
-                table: "definitions",
-                column: "department_id",
-                principalSchema: "org",
-                principalTable: "departments",
-                principalColumn: "id");
-
-            migrationBuilder.AddForeignKey(
-                name: "definitions_tenant_id_fkey",
-                schema: "workflow",
-                table: "definitions",
-                column: "tenant_id",
-                principalSchema: "org",
-                principalTable: "tenants",
+                name: "delegations_definition_id_fkey",
+                table: "delegations",
+                column: "definition_id",
+                principalTable: "workflow_definitions",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "delegations_delegate_id_fkey",
-                schema: "workflow",
                 table: "delegations",
                 column: "delegate_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "delegations_delegator_id_fkey",
-                schema: "workflow",
                 table: "delegations",
                 column: "delegator_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "delegations_tenant_id_fkey",
-                schema: "workflow",
                 table: "delegations",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "deliveries_notification_id_fkey",
-                schema: "notify",
                 table: "deliveries",
                 column: "notification_id",
-                principalSchema: "notify",
                 principalTable: "notifications",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "deliveries_template_id_fkey",
-                schema: "notify",
                 table: "deliveries",
                 column: "template_id",
-                principalSchema: "notify",
                 principalTable: "templates",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "delivery_attachments_file_id_fkey",
-                schema: "notify",
                 table: "delivery_attachments",
                 column: "file_id",
-                principalSchema: "storage",
                 principalTable: "files",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "departments_tenant_id_fkey",
-                schema: "org",
                 table: "departments",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_departments_deputy",
-                schema: "org",
                 table: "departments",
                 column: "deputy_user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_departments_manager",
-                schema: "org",
                 table: "departments",
                 column: "manager_user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "device_tokens_device_id_fkey",
-                schema: "notify",
                 table: "device_tokens",
                 column: "device_id",
-                principalSchema: "iam",
                 principalTable: "user_devices",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "device_tokens_user_id_fkey",
-                schema: "notify",
                 table: "device_tokens",
                 column: "user_id",
-                principalSchema: "iam",
                 principalTable: "users",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "exchange_rates_tenant_id_fkey",
-                schema: "mdm",
                 table: "exchange_rates",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "file_share_links_file_id_fkey",
-                schema: "storage",
                 table: "file_share_links",
                 column: "file_id",
-                principalSchema: "storage",
                 principalTable: "files",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "file_variants_file_id_fkey",
-                schema: "storage",
                 table: "file_variants",
                 column: "file_id",
-                principalSchema: "storage",
                 principalTable: "files",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "files_tenant_id_fkey",
-                schema: "storage",
                 table: "files",
                 column: "tenant_id",
-                principalSchema: "org",
                 principalTable: "tenants",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "kb_chunks_document_id_fkey",
-                schema: "ai",
                 table: "kb_chunks",
                 column: "document_id",
-                principalSchema: "ai",
                 principalTable: "kb_documents",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "kb_chunks_knowledge_base_id_fkey",
-                schema: "ai",
                 table: "kb_chunks",
                 column: "knowledge_base_id",
-                principalSchema: "ai",
                 principalTable: "knowledge_bases",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "kb_documents_knowledge_base_id_fkey",
-                schema: "ai",
                 table: "kb_documents",
                 column: "knowledge_base_id",
-                principalSchema: "ai",
                 principalTable: "knowledge_bases",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "knowledge_base_access_knowledge_base_id_fkey",
-                schema: "ai",
                 table: "knowledge_base_access",
                 column: "knowledge_base_id",
-                principalSchema: "ai",
                 principalTable: "knowledge_bases",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "knowledge_bases_answer_prompt_id_fkey",
-                schema: "ai",
                 table: "knowledge_bases",
                 column: "answer_prompt_id",
-                principalSchema: "ai",
                 principalTable: "prompt_templates",
                 principalColumn: "id");
 
             migrationBuilder.AddForeignKey(
                 name: "prompt_guardrails_prompt_version_id_fkey",
-                schema: "ai",
                 table: "prompt_guardrails",
                 column: "prompt_version_id",
-                principalSchema: "ai",
                 principalTable: "prompt_versions",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "fk_ai_prompt_current_version",
-                schema: "ai",
                 table: "prompt_templates",
                 column: "current_version_id",
-                principalSchema: "ai",
                 principalTable: "prompt_versions",
                 principalColumn: "id");
 
-            // Phần EF Core không biểu diễn được — giữ nguyên từ docs/base_erp_core.sql
-            migrationBuilder.Sql(SqlScripts.Load(SqlScripts.PartitionedTables));
+            // Phần EF Core không biểu diễn được — sinh từ docs/base_erp_core.sql
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.ExpressionIndexes));
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.UpdatedAtTriggers));
             migrationBuilder.Sql(SqlScripts.Load(SqlScripts.DocumentNumberFunction));
@@ -6264,641 +6641,508 @@ namespace CorePlatformApi.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
 
-            migrationBuilder.Sql("""
-                DROP FUNCTION IF EXISTS mdm.next_document_number(uuid, varchar, uuid, uuid, date);
-                DROP TABLE IF EXISTS audit.login_logs, audit.security_events, audit.data_change_logs,
-                    audit.api_request_logs, monitor.health_checks, ai.usage_logs, storage.file_access_logs CASCADE;
-                """);
+            migrationBuilder.Sql("DROP FUNCTION IF EXISTS next_document_number(uuid, varchar, uuid, uuid, date);");
 
             migrationBuilder.DropForeignKey(
                 name: "branches_province_id_fkey",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
                 name: "branches_ward_id_fkey",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
                 name: "companies_province_id_fkey",
-                schema: "org",
                 table: "companies");
 
             migrationBuilder.DropForeignKey(
                 name: "companies_ward_id_fkey",
-                schema: "org",
                 table: "companies");
 
             migrationBuilder.DropForeignKey(
                 name: "branches_country_code_fkey",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
                 name: "companies_country_code_fkey",
-                schema: "org",
                 table: "companies");
 
             migrationBuilder.DropForeignKey(
                 name: "tenants_country_code_fkey",
-                schema: "org",
                 table: "tenants");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_branches_manager",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_departments_deputy",
-                schema: "org",
                 table: "departments");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_departments_manager",
-                schema: "org",
                 table: "departments");
 
             migrationBuilder.DropForeignKey(
                 name: "branches_tenant_id_fkey",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
                 name: "companies_tenant_id_fkey",
-                schema: "org",
                 table: "companies");
 
             migrationBuilder.DropForeignKey(
-                name: "definitions_tenant_id_fkey",
-                schema: "workflow",
-                table: "definitions");
-
-            migrationBuilder.DropForeignKey(
                 name: "departments_tenant_id_fkey",
-                schema: "org",
                 table: "departments");
 
             migrationBuilder.DropForeignKey(
                 name: "files_tenant_id_fkey",
-                schema: "storage",
                 table: "files");
 
             migrationBuilder.DropForeignKey(
                 name: "model_aliases_tenant_id_fkey",
-                schema: "ai",
                 table: "model_aliases");
 
             migrationBuilder.DropForeignKey(
                 name: "prompt_templates_tenant_id_fkey",
-                schema: "ai",
                 table: "prompt_templates");
 
             migrationBuilder.DropForeignKey(
-                name: "providers_tenant_id_fkey",
-                schema: "storage",
-                table: "providers");
+                name: "storage_providers_tenant_id_fkey",
+                table: "storage_providers");
 
             migrationBuilder.DropForeignKey(
                 name: "work_calendars_tenant_id_fkey",
-                schema: "mdm",
                 table: "work_calendars");
 
             migrationBuilder.DropForeignKey(
+                name: "workflow_definitions_tenant_id_fkey",
+                table: "workflow_definitions");
+
+            migrationBuilder.DropForeignKey(
                 name: "document_types_module_id_fkey",
-                schema: "mdm",
                 table: "document_types");
 
             migrationBuilder.DropForeignKey(
                 name: "prompt_templates_module_id_fkey",
-                schema: "ai",
                 table: "prompt_templates");
 
             migrationBuilder.DropForeignKey(
                 name: "branches_company_id_fkey",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
-                name: "definitions_company_id_fkey",
-                schema: "workflow",
-                table: "definitions");
-
-            migrationBuilder.DropForeignKey(
                 name: "departments_company_id_fkey",
-                schema: "org",
                 table: "departments");
 
             migrationBuilder.DropForeignKey(
                 name: "work_calendars_company_id_fkey",
-                schema: "mdm",
                 table: "work_calendars");
 
             migrationBuilder.DropForeignKey(
+                name: "workflow_definitions_company_id_fkey",
+                table: "workflow_definitions");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_branches_calendar",
-                schema: "org",
                 table: "branches");
 
             migrationBuilder.DropForeignKey(
                 name: "definition_versions_definition_id_fkey",
-                schema: "workflow",
                 table: "definition_versions");
 
             migrationBuilder.DropForeignKey(
                 name: "prompt_versions_template_id_fkey",
-                schema: "ai",
                 table: "prompt_versions");
 
             migrationBuilder.DropTable(
-                name: "action_logs",
-                schema: "workflow");
+                name: "action_logs");
 
             migrationBuilder.DropTable(
-                name: "administrative_unit_mappings",
-                schema: "mdm");
+                name: "administrative_unit_mappings");
 
             migrationBuilder.DropTable(
-                name: "api_keys",
-                schema: "integration");
+                name: "api_keys");
 
             migrationBuilder.DropTable(
-                name: "api_scopes",
-                schema: "iam");
+                name: "api_request_logs");
 
             migrationBuilder.DropTable(
-                name: "audit_policies",
-                schema: "audit");
+                name: "api_scopes");
 
             migrationBuilder.DropTable(
-                name: "banks",
-                schema: "mdm");
+                name: "audit_policies");
 
             migrationBuilder.DropTable(
-                name: "delivery_attachments",
-                schema: "notify");
+                name: "banks");
 
             migrationBuilder.DropTable(
-                name: "destinations",
-                schema: "gateway");
+                name: "data_change_logs");
 
             migrationBuilder.DropTable(
-                name: "device_tokens",
-                schema: "notify");
+                name: "delivery_attachments");
 
             migrationBuilder.DropTable(
-                name: "error_codes",
-                schema: "gateway");
+                name: "destinations");
 
             migrationBuilder.DropTable(
-                name: "event_subscriptions",
-                schema: "integration");
+                name: "device_tokens");
 
             migrationBuilder.DropTable(
-                name: "exchange_rates",
-                schema: "mdm");
+                name: "error_codes");
 
             migrationBuilder.DropTable(
-                name: "executions",
-                schema: "job");
+                name: "event_subscriptions");
 
             migrationBuilder.DropTable(
-                name: "external_mappings",
-                schema: "integration");
+                name: "exchange_rates");
 
             migrationBuilder.DropTable(
-                name: "feature_flag_rules",
-                schema: "config");
+                name: "executions");
 
             migrationBuilder.DropTable(
-                name: "file_share_links",
-                schema: "storage");
+                name: "external_mappings");
 
             migrationBuilder.DropTable(
-                name: "file_variants",
-                schema: "storage");
+                name: "feature_flag_rules");
 
             migrationBuilder.DropTable(
-                name: "gateway_clients",
-                schema: "ai");
+                name: "file_access_logs");
 
             migrationBuilder.DropTable(
-                name: "inbound_requests",
-                schema: "integration");
+                name: "file_share_links");
 
             migrationBuilder.DropTable(
-                name: "inbox_messages",
-                schema: "integration");
+                name: "file_variants");
 
             migrationBuilder.DropTable(
-                name: "incidents",
-                schema: "monitor");
+                name: "gateway_clients");
 
             migrationBuilder.DropTable(
-                name: "kb_chunks",
-                schema: "ai");
+                name: "health_checks");
 
             migrationBuilder.DropTable(
-                name: "knowledge_base_access",
-                schema: "ai");
+                name: "inbound_requests");
 
             migrationBuilder.DropTable(
-                name: "messages",
-                schema: "ai");
+                name: "inbox_messages");
 
             migrationBuilder.DropTable(
-                name: "model_alias_targets",
-                schema: "ai");
+                name: "incidents");
 
             migrationBuilder.DropTable(
-                name: "numbering_counters",
-                schema: "mdm");
+                name: "kb_chunks");
 
             migrationBuilder.DropTable(
-                name: "outbox_messages",
-                schema: "integration");
+                name: "knowledge_base_access");
 
             migrationBuilder.DropTable(
-                name: "password_histories",
-                schema: "iam");
+                name: "login_logs");
 
             migrationBuilder.DropTable(
-                name: "prompt_guardrails",
-                schema: "ai");
+                name: "messages");
 
             migrationBuilder.DropTable(
-                name: "push_configs",
-                schema: "notify");
+                name: "model_alias_targets");
 
             migrationBuilder.DropTable(
-                name: "quotas",
-                schema: "ai");
+                name: "numbering_counters");
 
             migrationBuilder.DropTable(
-                name: "refresh_tokens",
-                schema: "iam");
+                name: "outbox_messages");
 
             migrationBuilder.DropTable(
-                name: "revoked_access_tokens",
-                schema: "iam");
+                name: "password_histories");
 
             migrationBuilder.DropTable(
-                name: "role_permission_scopes",
-                schema: "iam");
+                name: "prompt_guardrails");
 
             migrationBuilder.DropTable(
-                name: "routes",
-                schema: "gateway");
+                name: "push_configs");
 
             migrationBuilder.DropTable(
-                name: "security_policies",
-                schema: "iam");
+                name: "quotas");
 
             migrationBuilder.DropTable(
-                name: "setting_values",
-                schema: "config");
+                name: "refresh_tokens");
 
             migrationBuilder.DropTable(
-                name: "signing_keys",
-                schema: "iam");
+                name: "revoked_access_tokens");
 
             migrationBuilder.DropTable(
-                name: "smtp_configs",
-                schema: "notify");
+                name: "role_permission_scopes");
 
             migrationBuilder.DropTable(
-                name: "step_approvers",
-                schema: "workflow");
+                name: "routes");
 
             migrationBuilder.DropTable(
-                name: "tax_rates",
-                schema: "mdm");
+                name: "security_events");
 
             migrationBuilder.DropTable(
-                name: "tenant_modules",
-                schema: "iam");
+                name: "security_policies");
 
             migrationBuilder.DropTable(
-                name: "tenant_overrides",
-                schema: "job");
+                name: "setting_values");
 
             migrationBuilder.DropTable(
-                name: "tenant_rate_limits",
-                schema: "gateway");
+                name: "signing_keys");
 
             migrationBuilder.DropTable(
-                name: "transitions",
-                schema: "workflow");
+                name: "smtp_configs");
 
             migrationBuilder.DropTable(
-                name: "translations",
-                schema: "config");
+                name: "step_approvers");
 
             migrationBuilder.DropTable(
-                name: "uom_conversions",
-                schema: "mdm");
+                name: "tax_rates");
 
             migrationBuilder.DropTable(
-                name: "upload_policies",
-                schema: "storage");
+                name: "tenant_modules");
 
             migrationBuilder.DropTable(
-                name: "usage_daily",
-                schema: "ai");
+                name: "tenant_overrides");
 
             migrationBuilder.DropTable(
-                name: "user_external_logins",
-                schema: "iam");
+                name: "tenant_rate_limits");
 
             migrationBuilder.DropTable(
-                name: "user_notifications",
-                schema: "notify");
+                name: "transitions");
 
             migrationBuilder.DropTable(
-                name: "user_org_assignments",
-                schema: "iam");
+                name: "translations");
 
             migrationBuilder.DropTable(
-                name: "user_permission_overrides",
-                schema: "iam");
+                name: "uom_conversions");
 
             migrationBuilder.DropTable(
-                name: "user_preferences",
-                schema: "notify");
+                name: "upload_policies");
 
             migrationBuilder.DropTable(
-                name: "user_recovery_codes",
-                schema: "iam");
+                name: "usage_daily");
 
             migrationBuilder.DropTable(
-                name: "user_roles",
-                schema: "iam");
+                name: "usage_logs");
 
             migrationBuilder.DropTable(
-                name: "verification_tokens",
-                schema: "iam");
+                name: "user_external_logins");
 
             migrationBuilder.DropTable(
-                name: "webhook_deliveries",
-                schema: "integration");
+                name: "user_notifications");
 
             migrationBuilder.DropTable(
-                name: "work_calendar_exceptions",
-                schema: "mdm");
+                name: "user_org_assignments");
 
             migrationBuilder.DropTable(
-                name: "work_calendar_weekdays",
-                schema: "mdm");
+                name: "user_permission_overrides");
 
             migrationBuilder.DropTable(
-                name: "tasks",
-                schema: "workflow");
+                name: "user_preferences");
 
             migrationBuilder.DropTable(
-                name: "oauth_clients",
-                schema: "iam");
+                name: "user_recovery_codes");
 
             migrationBuilder.DropTable(
-                name: "deliveries",
-                schema: "notify");
+                name: "user_roles");
 
             migrationBuilder.DropTable(
-                name: "event_types",
-                schema: "integration");
+                name: "verification_tokens");
 
             migrationBuilder.DropTable(
-                name: "connections",
-                schema: "integration");
+                name: "webhook_deliveries");
 
             migrationBuilder.DropTable(
-                name: "feature_flags",
-                schema: "config");
+                name: "work_calendar_exceptions");
 
             migrationBuilder.DropTable(
-                name: "inbound_sources",
-                schema: "integration");
+                name: "work_calendar_weekdays");
 
             migrationBuilder.DropTable(
-                name: "services",
-                schema: "monitor");
+                name: "tasks");
 
             migrationBuilder.DropTable(
-                name: "kb_documents",
-                schema: "ai");
+                name: "oauth_clients");
 
             migrationBuilder.DropTable(
-                name: "conversations",
-                schema: "ai");
+                name: "deliveries");
 
             migrationBuilder.DropTable(
-                name: "provider_credentials",
-                schema: "ai");
+                name: "integration_event_types");
 
             migrationBuilder.DropTable(
-                name: "numbering_rules",
-                schema: "mdm");
+                name: "connections");
 
             migrationBuilder.DropTable(
-                name: "guardrail_policies",
-                schema: "ai");
+                name: "feature_flags");
 
             migrationBuilder.DropTable(
-                name: "user_sessions",
-                schema: "iam");
+                name: "inbound_sources");
 
             migrationBuilder.DropTable(
-                name: "role_permissions",
-                schema: "iam");
+                name: "services");
 
             migrationBuilder.DropTable(
-                name: "clusters",
-                schema: "gateway");
+                name: "kb_documents");
 
             migrationBuilder.DropTable(
-                name: "cors_policies",
-                schema: "gateway");
+                name: "conversations");
 
             migrationBuilder.DropTable(
-                name: "security_header_policies",
-                schema: "gateway");
+                name: "provider_credentials");
 
             migrationBuilder.DropTable(
-                name: "setting_definitions",
-                schema: "config");
+                name: "numbering_rules");
 
             migrationBuilder.DropTable(
-                name: "tax_types",
-                schema: "mdm");
+                name: "guardrail_policies");
 
             migrationBuilder.DropTable(
-                name: "definitions",
-                schema: "job");
+                name: "user_sessions");
 
             migrationBuilder.DropTable(
-                name: "rate_limit_policies",
-                schema: "gateway");
+                name: "role_permissions");
 
             migrationBuilder.DropTable(
-                name: "translation_keys",
-                schema: "config");
+                name: "clusters");
 
             migrationBuilder.DropTable(
-                name: "languages",
-                schema: "config");
+                name: "cors_policies");
 
             migrationBuilder.DropTable(
-                name: "uoms",
-                schema: "mdm");
+                name: "security_header_policies");
 
             migrationBuilder.DropTable(
-                name: "webhook_endpoints",
-                schema: "integration");
+                name: "setting_definitions");
 
             migrationBuilder.DropTable(
-                name: "holidays",
-                schema: "mdm");
+                name: "tax_types");
 
             migrationBuilder.DropTable(
-                name: "delegations",
-                schema: "workflow");
+                name: "job_definitions");
 
             migrationBuilder.DropTable(
-                name: "instance_steps",
-                schema: "workflow");
+                name: "rate_limit_policies");
 
             migrationBuilder.DropTable(
-                name: "notifications",
-                schema: "notify");
+                name: "translation_keys");
 
             migrationBuilder.DropTable(
-                name: "templates",
-                schema: "notify");
+                name: "languages");
 
             migrationBuilder.DropTable(
-                name: "knowledge_bases",
-                schema: "ai");
+                name: "uoms");
 
             migrationBuilder.DropTable(
-                name: "user_devices",
-                schema: "iam");
+                name: "webhook_endpoints");
 
             migrationBuilder.DropTable(
-                name: "permissions",
-                schema: "iam");
+                name: "holidays");
 
             migrationBuilder.DropTable(
-                name: "roles",
-                schema: "iam");
+                name: "delegations");
 
             migrationBuilder.DropTable(
-                name: "uom_categories",
-                schema: "mdm");
+                name: "instance_steps");
 
             migrationBuilder.DropTable(
-                name: "instances",
-                schema: "workflow");
+                name: "notifications");
 
             migrationBuilder.DropTable(
-                name: "steps",
-                schema: "workflow");
+                name: "templates");
 
             migrationBuilder.DropTable(
-                name: "event_types",
-                schema: "notify");
+                name: "knowledge_bases");
 
             migrationBuilder.DropTable(
-                name: "models",
-                schema: "ai");
+                name: "user_devices");
 
             migrationBuilder.DropTable(
-                name: "permission_actions",
-                schema: "iam");
+                name: "permissions");
 
             migrationBuilder.DropTable(
-                name: "resources",
-                schema: "iam");
+                name: "roles");
 
             migrationBuilder.DropTable(
-                name: "providers",
-                schema: "ai");
+                name: "uom_categories");
 
             migrationBuilder.DropTable(
-                name: "administrative_units",
-                schema: "mdm");
+                name: "instances");
 
             migrationBuilder.DropTable(
-                name: "countries",
-                schema: "mdm");
+                name: "steps");
 
             migrationBuilder.DropTable(
-                name: "users",
-                schema: "iam");
+                name: "notify_event_types");
 
             migrationBuilder.DropTable(
-                name: "tenants",
-                schema: "org");
+                name: "models");
 
             migrationBuilder.DropTable(
-                name: "modules",
-                schema: "iam");
+                name: "permission_actions");
 
             migrationBuilder.DropTable(
-                name: "companies",
-                schema: "org");
+                name: "resources");
 
             migrationBuilder.DropTable(
-                name: "currencies",
-                schema: "mdm");
+                name: "ai_providers");
 
             migrationBuilder.DropTable(
-                name: "files",
-                schema: "storage");
+                name: "administrative_units");
 
             migrationBuilder.DropTable(
-                name: "buckets",
-                schema: "storage");
+                name: "countries");
 
             migrationBuilder.DropTable(
-                name: "providers",
-                schema: "storage");
+                name: "users");
 
             migrationBuilder.DropTable(
-                name: "work_calendars",
-                schema: "mdm");
+                name: "tenants");
 
             migrationBuilder.DropTable(
-                name: "definitions",
-                schema: "workflow");
+                name: "modules");
 
             migrationBuilder.DropTable(
-                name: "departments",
-                schema: "org");
+                name: "companies");
 
             migrationBuilder.DropTable(
-                name: "document_types",
-                schema: "mdm");
+                name: "currencies");
 
             migrationBuilder.DropTable(
-                name: "definition_versions",
-                schema: "workflow");
+                name: "files");
 
             migrationBuilder.DropTable(
-                name: "branches",
-                schema: "org");
+                name: "buckets");
 
             migrationBuilder.DropTable(
-                name: "prompt_templates",
-                schema: "ai");
+                name: "storage_providers");
 
             migrationBuilder.DropTable(
-                name: "prompt_versions",
-                schema: "ai");
+                name: "work_calendars");
 
             migrationBuilder.DropTable(
-                name: "model_aliases",
-                schema: "ai");
+                name: "workflow_definitions");
 
-            migrationBuilder.Sql("DROP SCHEMA IF EXISTS core CASCADE;");
+            migrationBuilder.DropTable(
+                name: "definition_versions");
+
+            migrationBuilder.DropTable(
+                name: "departments");
+
+            migrationBuilder.DropTable(
+                name: "document_types");
+
+            migrationBuilder.DropTable(
+                name: "branches");
+
+            migrationBuilder.DropTable(
+                name: "prompt_templates");
+
+            migrationBuilder.DropTable(
+                name: "prompt_versions");
+
+            migrationBuilder.DropTable(
+                name: "model_aliases");
+
+            migrationBuilder.Sql("DROP FUNCTION IF EXISTS set_updated_at();");
         }
     }
 }

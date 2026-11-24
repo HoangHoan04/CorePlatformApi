@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,21 +8,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Hạn mức sử dụng AI theo tenant / phân hệ / user theo ngày hoặc tháng
 /// </summary>
-/// <remarks>Bảng <c>ai.quotas</c>.</remarks>
-public class AiQuota : AuditableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>quotas</c> (phân hệ ai).</remarks>
+public class AiQuota : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Phân hệ (NULL = toàn tenant)
     /// </summary>

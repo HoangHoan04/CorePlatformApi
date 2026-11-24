@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Storage;
 
@@ -7,25 +7,15 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Tài liệu nguồn trong kho tri thức
 /// </summary>
-/// <remarks>Bảng <c>ai.kb_documents</c>.</remarks>
-public class KbDocument : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>kb_documents</c> (phân hệ ai); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class KbDocument : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Kho tri thức
     /// </summary>
     /// <remarks>FK → <c>ai.knowledge_bases(id)</c></remarks>
     public Guid KnowledgeBaseId { get; set; }
-
-    /// <summary>
-    /// Tenant (denormalize)
-    /// </summary>
-    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Tiêu đề

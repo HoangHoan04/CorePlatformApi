@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.prompt_templates</c>.
+/// Cấu hình EF Core cho bảng <c>prompt_templates</c>.
 /// </summary>
 public sealed class AiPromptTemplateConfiguration : IEntityTypeConfiguration<AiPromptTemplate>
 {
     public void Configure(EntityTypeBuilder<AiPromptTemplate> builder)
     {
-        builder.ToTable("prompt_templates", "ai", tb =>
+        builder.ToTable("prompt_templates", tb =>
         {
             tb.HasComment("Prompt template dùng chung theo phân hệ (tóm tắt CV - HRM, phân tích KH - CRM, gợi ý đặt hàng - WMS)");
         });

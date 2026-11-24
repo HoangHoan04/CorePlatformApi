@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Job;
@@ -6,25 +6,14 @@ namespace CorePlatformApi.Domain.Entities.Job;
 /// <summary>
 /// Lịch sử từng lần chạy job
 /// </summary>
-/// <remarks>Bảng <c>job.executions</c>.</remarks>
-public class JobExecution : IMayHaveTenant
+/// <remarks>Bảng <c>executions</c> (phân hệ job).</remarks>
+public class JobExecution : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Job
     /// </summary>
     /// <remarks>FK → <c>job.definitions(id)</c></remarks>
     public Guid JobId { get; set; }
-
-    /// <summary>
-    /// Tenant (job chạy theo tenant)
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Nguồn kích hoạt

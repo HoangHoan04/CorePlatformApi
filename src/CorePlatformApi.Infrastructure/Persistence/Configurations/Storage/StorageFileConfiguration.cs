@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Org;
 using CorePlatformApi.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Storage;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>storage.files</c>.
+/// Cấu hình EF Core cho bảng <c>files</c>.
 /// </summary>
 public sealed class StorageFileConfiguration : IEntityTypeConfiguration<StorageFile>
 {
     public void Configure(EntityTypeBuilder<StorageFile> builder)
     {
-        builder.ToTable("files", "storage", tb =>
+        builder.ToTable("files", tb =>
         {
             tb.HasComment("Metadata file đã upload. File vật lý nằm trên Object Storage; mọi phân hệ chỉ lưu file_id");
             tb.HasCheckConstraint("files_size_bytes_check", "size_bytes >= 0");

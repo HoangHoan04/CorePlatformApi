@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.tenant_modules</c>.
+/// Cấu hình EF Core cho bảng <c>tenant_modules</c>.
 /// </summary>
 public sealed class TenantModuleConfiguration : IEntityTypeConfiguration<TenantModule>
 {
     public void Configure(EntityTypeBuilder<TenantModule> builder)
     {
-        builder.ToTable("tenant_modules", "iam", tb =>
+        builder.ToTable("tenant_modules", tb =>
         {
             tb.HasComment("Phân hệ được kích hoạt cho từng tenant (gói thuê bao). User chỉ vào được phân hệ tenant đã mua");
         });
@@ -97,6 +97,24 @@ public sealed class TenantModuleConfiguration : IEntityTypeConfiguration<TenantM
             .HasColumnType("uuid")
             .HasColumnOrder(11)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(12)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(13)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(14)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.ModuleId }, "uq_tenant_modules").IsUnique();
 

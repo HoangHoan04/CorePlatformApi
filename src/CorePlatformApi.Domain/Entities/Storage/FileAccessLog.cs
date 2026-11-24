@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using System.Net;
 
@@ -7,24 +7,13 @@ namespace CorePlatformApi.Domain.Entities.Storage;
 /// <summary>
 /// Nhật ký truy cập file nhạy cảm (xem, tải, cấp presigned URL) phục vụ kiểm toán
 /// </summary>
-/// <remarks>Bảng <c>storage.file_access_logs</c>; partition RANGE theo <c>occurred_at</c> (tạo bằng SQL thô, không qua EF migration).</remarks>
-public class FileAccessLog : IMayHaveTenant
+/// <remarks>Bảng <c>file_access_logs</c> (phân hệ storage).</remarks>
+public class FileAccessLog : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// File
     /// </summary>
     public Guid FileId { get; set; }
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Người truy cập (NULL nếu qua share link)

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,26 +7,14 @@ namespace CorePlatformApi.Domain.Entities.Job;
 /// <summary>
 /// Ghi đè lịch/tham số job theo tenant (VD: tenant A chốt công lúc 23:00, tenant B lúc 01:00)
 /// </summary>
-/// <remarks>Bảng <c>job.tenant_overrides</c>.</remarks>
-public class JobTenantOverride : AuditableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>tenant_overrides</c> (phân hệ job).</remarks>
+public class JobTenantOverride : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Job
     /// </summary>
     /// <remarks>FK → <c>job.definitions(id)</c></remarks>
     public Guid JobId { get; set; }
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Cron riêng

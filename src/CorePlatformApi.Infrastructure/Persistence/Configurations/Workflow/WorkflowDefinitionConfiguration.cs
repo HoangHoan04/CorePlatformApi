@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using CorePlatformApi.Domain.Entities.Workflow;
@@ -8,18 +8,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Workflow;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>workflow.definitions</c>.
+/// Cấu hình EF Core cho bảng <c>workflow_definitions</c>.
 /// </summary>
 public sealed class WorkflowDefinitionConfiguration : IEntityTypeConfiguration<WorkflowDefinition>
 {
     public void Configure(EntityTypeBuilder<WorkflowDefinition> builder)
     {
-        builder.ToTable("definitions", "workflow", tb =>
+        builder.ToTable("workflow_definitions", tb =>
         {
             tb.HasComment("Định nghĩa quy trình duyệt cho một loại chứng từ (đơn nghỉ phép, đề xuất mua hàng, chiết khấu vượt khung...)");
         });
 
-        builder.HasKey(x => x.Id).HasName("definitions_pkey");
+        builder.HasKey(x => x.Id).HasName("workflow_definitions_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -179,27 +179,28 @@ public sealed class WorkflowDefinitionConfiguration : IEntityTypeConfiguration<W
         builder.HasOne(x => x.Tenant)
             .WithMany()
             .HasForeignKey(x => x.TenantId)
-            .HasConstraintName("definitions_tenant_id_fkey")
+            .HasConstraintName("workflow_definitions_tenant_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.DocumentType)
             .WithMany()
             .HasForeignKey(x => x.DocumentTypeCode)
-            .HasConstraintName("definitions_document_type_code_fkey")
+            .HasPrincipalKey(p => p.Code)
+            .HasConstraintName("workflow_definitions_document_type_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Company)
             .WithMany()
             .HasForeignKey(x => x.CompanyId)
-            .HasConstraintName("definitions_company_id_fkey")
+            .HasConstraintName("workflow_definitions_company_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Branch)
             .WithMany()
             .HasForeignKey(x => x.BranchId)
-            .HasConstraintName("definitions_branch_id_fkey")
+            .HasConstraintName("workflow_definitions_branch_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Department)
             .WithMany()
             .HasForeignKey(x => x.DepartmentId)
-            .HasConstraintName("definitions_department_id_fkey")
+            .HasConstraintName("workflow_definitions_department_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.CurrentVersion)
             .WithMany()

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,21 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Kho tri thức RAG (nội quy, chính sách bán hàng, quy trình kho) cho chatbot nội bộ
 /// </summary>
-/// <remarks>Bảng <c>ai.knowledge_bases</c>.</remarks>
-public class KnowledgeBase : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>knowledge_bases</c> (phân hệ ai); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class KnowledgeBase : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Phân hệ liên quan (NULL = dùng chung)
     /// </summary>

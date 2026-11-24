@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Cấu hình nhà cung cấp push theo ứng dụng mobile (FCM, APNs)
 /// </summary>
-/// <remarks>Bảng <c>notify.push_configs</c>.</remarks>
-public class PushConfig : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>push_configs</c> (phân hệ notify).</remarks>
+public class PushConfig : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = app hệ thống; khác NULL khi build app white-label)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Mã app (HRM_MOBILE, WMS_MOBILE)
     /// </summary>

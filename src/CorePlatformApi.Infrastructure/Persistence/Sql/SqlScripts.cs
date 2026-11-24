@@ -4,12 +4,11 @@ namespace CorePlatformApi.Infrastructure.Persistence.Sql;
 
 /// <summary>
 /// Đọc các script SQL nhúng (EmbeddedResource) cho những phần EF Core không biểu diễn được:
-/// hàm/trigger PL/pgSQL, bảng partition, index biểu thức, seed dữ liệu, pgvector.
+/// hàm/trigger PL/pgSQL, index biểu thức, seed dữ liệu, pgvector.
 /// </summary>
 public static class SqlScripts
 {
     public const string CoreFunctions = "000_core_functions.sql";
-    public const string PartitionedTables = "010_partitioned_tables.sql";
     public const string ExpressionIndexes = "020_expression_indexes.sql";
     public const string UpdatedAtTriggers = "030_updated_at_triggers.sql";
     public const string DocumentNumberFunction = "040_document_number_function.sql";

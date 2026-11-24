@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Mẫu nội dung theo sự kiện × kênh × ngôn ngữ, dùng biến {{employee_name}}. Tenant có thể ghi đè mẫu hệ thống
 /// </summary>
-/// <remarks>Bảng <c>notify.templates</c>.</remarks>
-public class NotificationTemplate : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>templates</c> (phân hệ notify); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class NotificationTemplate : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = mẫu hệ thống)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Sự kiện
     /// </summary>
@@ -75,7 +64,7 @@ public class NotificationTemplate : SoftDeletableEntity, IMayHaveTenant
     /// Phiên bản
     /// </summary>
     /// <remarks>Mặc định DB: <c>1</c></remarks>
-    public int Version { get; set; } = 1;
+    public int TemplateVersion { get; set; } = 1;
 
     /// <summary>
     /// Đang dùng

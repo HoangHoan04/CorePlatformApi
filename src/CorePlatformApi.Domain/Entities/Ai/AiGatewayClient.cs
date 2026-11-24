@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,21 +8,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Client nội bộ gọi AI Gateway (mỗi phân hệ/ứng dụng một client key) để định danh, rate limit, tính quota
 /// </summary>
-/// <remarks>Bảng <c>ai.gateway_clients</c>.</remarks>
-public class AiGatewayClient : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>gateway_clients</c> (phân hệ ai).</remarks>
+public class AiGatewayClient : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = dùng chung)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Phân hệ
     /// </summary>

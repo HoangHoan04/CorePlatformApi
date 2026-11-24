@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Route định tuyến: /auth/*, /hrm/*, /wms/*, /crm/*, /ai/* → cluster nội bộ
 /// </summary>
-/// <remarks>Bảng <c>gateway.routes</c>.</remarks>
-public class GatewayRoute : AuditableEntity
+/// <remarks>Bảng <c>routes</c> (phân hệ gateway).</remarks>
+public class GatewayRoute : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã route
     /// </summary>

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.webhook_deliveries</c>.
+/// Cấu hình EF Core cho bảng <c>webhook_deliveries</c>.
 /// </summary>
 public sealed class WebhookDeliveryConfiguration : IEntityTypeConfiguration<WebhookDelivery>
 {
     public void Configure(EntityTypeBuilder<WebhookDelivery> builder)
     {
-        builder.ToTable("webhook_deliveries", "integration", tb =>
+        builder.ToTable("webhook_deliveries", tb =>
         {
             tb.HasComment("Nhật ký từng lần gửi webhook outbound (payload, response, retry)");
             tb.HasCheckConstraint("webhook_deliveries_status_check", "status IN ('PENDING','SUCCESS','FAILED','RETRYING','DEAD')");
@@ -28,17 +28,17 @@ public sealed class WebhookDeliveryConfiguration : IEntityTypeConfiguration<Webh
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
-        builder.Property(x => x.EndpointId)
-            .HasColumnName("endpoint_id")
-            .HasColumnType("uuid")
-            .HasColumnOrder(1)
-            .IsRequired()
-            .HasComment("Endpoint");
         builder.Property(x => x.TenantId)
             .HasColumnName("tenant_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(1)
             .HasComment("Tenant");
+        builder.Property(x => x.EndpointId)
+            .HasColumnName("endpoint_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Endpoint");
         builder.Property(x => x.MessageId)
             .HasColumnName("message_id")
             .HasColumnType("uuid")
@@ -108,19 +108,52 @@ public sealed class WebhookDeliveryConfiguration : IEntityTypeConfiguration<Webh
             .HasColumnType("timestamptz")
             .HasColumnOrder(14)
             .HasComment("Lần retry tiếp");
+        builder.Property(x => x.CompletedAt)
+            .HasColumnName("completed_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(15)
+            .HasComment("Hoàn tất lúc");
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(15)
+            .HasColumnOrder(16)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Tạo lúc");
-        builder.Property(x => x.CompletedAt)
-            .HasColumnName("completed_at")
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(17)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(16)
-            .HasComment("Hoàn tất lúc");
+            .HasColumnOrder(18)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(19)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(20)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.EndpointId, x.CreatedAt }, "ix_webhook_deliveries_endpoint")
             .IsDescending(false, true);

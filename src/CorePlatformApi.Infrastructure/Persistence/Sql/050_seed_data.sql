@@ -1,5 +1,5 @@
--- Sinh tự động từ docs/base_erp_core.sql — các phần EF Core không biểu diễn được.
-INSERT INTO mdm.currencies (code, numeric_code, name, symbol, decimal_places, rounding_unit, symbol_position, sort_order) VALUES
+-- Sinh tự động từ docs/base_erp_core.sql (đã làm phẳng về schema public) — các phần EF Core không biểu diễn được.
+INSERT INTO currencies (code, numeric_code, name, symbol, decimal_places, rounding_unit, symbol_position, sort_order) VALUES
  ('VND','704','Đồng Việt Nam','₫',0,1,'SUFFIX',1),
  ('USD','840','Đô la Mỹ','$',2,0.01,'PREFIX',2),
  ('EUR','978','Euro','€',2,0.01,'PREFIX',3),
@@ -7,35 +7,35 @@ INSERT INTO mdm.currencies (code, numeric_code, name, symbol, decimal_places, ro
  ('CNY','156','Nhân dân tệ','¥',2,0.01,'PREFIX',5),
  ('KRW','410','Won Hàn Quốc','₩',0,1,'PREFIX',6);
 
-INSERT INTO mdm.countries (code, alpha3_code, numeric_code, name, name_en, phone_code, currency_code, flag_emoji, sort_order) VALUES
+INSERT INTO countries (code, alpha3_code, numeric_code, name, name_en, phone_code, currency_code, flag_emoji, sort_order) VALUES
  ('VN','VNM','704','Việt Nam','Viet Nam','+84','VND','🇻🇳',1),
  ('US','USA','840','Hoa Kỳ','United States','+1','USD','🇺🇸',2),
  ('JP','JPN','392','Nhật Bản','Japan','+81','JPY','🇯🇵',3),
  ('KR','KOR','410','Hàn Quốc','Korea, Republic of','+82','KRW','🇰🇷',4),
  ('CN','CHN','156','Trung Quốc','China','+86','CNY','🇨🇳',5);
 
-INSERT INTO config.languages (code, name, native_name, is_default, sort_order) VALUES
+INSERT INTO languages (code, name, native_name, is_default, sort_order) VALUES
  ('vi-VN','Tiếng Việt','Tiếng Việt',true,1),
  ('en-US','Tiếng Anh','English',false,2);
 
-INSERT INTO iam.modules (code, name, base_route, is_core, sort_order) VALUES
+INSERT INTO modules (code, name, base_route, is_core, sort_order) VALUES
  ('CORE','Nền tảng lõi','/core',true,1),
  ('HRM','Quản trị nhân sự','/hrm',false,2),
  ('CRM','Quản lý khách hàng','/crm',false,3),
  ('WMS','Kho vận & vận hành','/wms',false,4),
  ('AI','Trí tuệ nhân tạo','/ai',false,5);
 
-INSERT INTO iam.permission_actions (code, name, sort_order) VALUES
+INSERT INTO permission_actions (code, name, sort_order) VALUES
  ('VIEW','Xem',1),('CREATE','Thêm',2),('UPDATE','Sửa',3),('DELETE','Xóa',4),
  ('APPROVE','Duyệt',5),('EXPORT','Xuất file',6),('IMPORT','Nhập file',7),('PRINT','In',8),('MANAGE','Quản trị',9);
 
-INSERT INTO iam.security_policies (tenant_id) VALUES (NULL);
+INSERT INTO security_policies (tenant_id) VALUES (NULL);
 
-INSERT INTO mdm.tax_types (code, name) VALUES
+INSERT INTO tax_types (code, name) VALUES
  ('VAT','Thuế giá trị gia tăng'),('CIT','Thuế thu nhập doanh nghiệp'),('PIT','Thuế thu nhập cá nhân'),
  ('IMPORT','Thuế nhập khẩu'),('SCT','Thuế tiêu thụ đặc biệt');
 
-INSERT INTO mdm.tax_rates (tax_type_code, code, name, rate, calc_method, einvoice_code, effective_from, sort_order, is_default) VALUES
+INSERT INTO tax_rates (tax_type_code, code, name, rate, calc_method, einvoice_code, effective_from, sort_order, is_default) VALUES
  ('VAT','VAT10','Thuế GTGT 10%',10,'PERCENT','10%','2009-01-01',1,true),
  ('VAT','VAT8','Thuế GTGT 8% (giảm theo nghị định)',8,'PERCENT','8%','2022-02-01',2,false),
  ('VAT','VAT5','Thuế GTGT 5%',5,'PERCENT','5%','2009-01-01',3,false),
@@ -43,10 +43,10 @@ INSERT INTO mdm.tax_rates (tax_type_code, code, name, rate, calc_method, einvoic
  ('VAT','KCT','Không chịu thuế GTGT',NULL,'NOT_SUBJECT','KCT','2009-01-01',5,false),
  ('VAT','KKKNT','Không kê khai, tính nộp thuế GTGT',NULL,'NOT_DECLARED','KKKNT','2009-01-01',6,false);
 
-INSERT INTO mdm.uom_categories (code, name) VALUES
+INSERT INTO uom_categories (code, name) VALUES
  ('COUNT','Số lượng'),('WEIGHT','Khối lượng'),('VOLUME','Thể tích'),('LENGTH','Chiều dài'),('AREA','Diện tích'),('TIME','Thời gian');
 
-INSERT INTO mdm.uoms (category_id, code, name, symbol, is_base, ratio_to_base, decimal_places, sort_order)
+INSERT INTO uoms (category_id, code, name, symbol, is_base, ratio_to_base, decimal_places, sort_order)
 SELECT c.id, v.code, v.name, v.symbol, v.is_base, v.ratio, v.dp, v.so
 FROM (VALUES
  ('COUNT','PCS','Cái','cái',true,1,0,1),('COUNT','BOX','Hộp','hộp',false,1,0,2),('COUNT','CTN','Thùng','thùng',false,1,0,3),
@@ -57,15 +57,15 @@ FROM (VALUES
  ('AREA','M2','Mét vuông','m²',true,1,3,40),
  ('TIME','HOUR','Giờ','giờ',true,1,2,50),('TIME','DAY','Ngày','ngày',false,8,2,51)
 ) AS v(cat, code, name, symbol, is_base, ratio, dp, so)
-JOIN mdm.uom_categories c ON c.code = v.cat;
+JOIN uom_categories c ON c.code = v.cat;
 
-INSERT INTO ai.providers (code, name, api_style, base_url, is_self_hosted) VALUES
+INSERT INTO ai_providers (code, name, api_style, base_url, is_self_hosted) VALUES
  ('OPENAI','OpenAI','OPENAI','https://api.openai.com/v1',false),
  ('ANTHROPIC','Anthropic','ANTHROPIC','https://api.anthropic.com',false),
  ('GEMINI','Google Gemini','GEMINI','https://generativelanguage.googleapis.com',false),
  ('OLLAMA','Model nội bộ (Ollama)','OPENAI','http://ollama:11434/v1',true);
 
-INSERT INTO gateway.error_codes (code, http_status, category, default_message, is_retryable) VALUES
+INSERT INTO error_codes (code, http_status, category, default_message, is_retryable) VALUES
  ('VALIDATION_FAILED',400,'VALIDATION','Dữ liệu không hợp lệ',false),
  ('AUTH_UNAUTHORIZED',401,'AUTHENTICATION','Bạn chưa đăng nhập hoặc phiên đã hết hạn',false),
  ('AUTH_TOKEN_EXPIRED',401,'AUTHENTICATION','Phiên đăng nhập đã hết hạn',false),
@@ -82,7 +82,7 @@ INSERT INTO gateway.error_codes (code, http_status, category, default_message, i
  ('SERVICE_UNAVAILABLE',503,'SYSTEM','Dịch vụ đang bảo trì hoặc tạm thời không khả dụng',true),
  ('UPSTREAM_TIMEOUT',504,'INTEGRATION','Dịch vụ phản hồi quá lâu',true);
 
-INSERT INTO gateway.rate_limit_policies (code, name, partition_by, algorithm, permit_limit, window_seconds, segments) VALUES
+INSERT INTO rate_limit_policies (code, name, partition_by, algorithm, permit_limit, window_seconds, segments) VALUES
  ('anonymous-ip','Request chưa đăng nhập theo IP','IP','SLIDING_WINDOW',60,60,6),
  ('login-strict','Chống dò mật khẩu tại /auth/login','IP','FIXED_WINDOW',10,60,NULL),
  ('default-user','Mặc định theo user','USER','SLIDING_WINDOW',300,60,6),

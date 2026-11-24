@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 using System.Net;
@@ -8,21 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Storage;
 /// <summary>
 /// Metadata file đã upload. File vật lý nằm trên Object Storage; mọi phân hệ chỉ lưu file_id
 /// </summary>
-/// <remarks>Bảng <c>storage.files</c>.</remarks>
-public class StorageFile : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>files</c> (phân hệ storage); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class StorageFile : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính (file_id dùng ở các phân hệ)
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Bucket
     /// </summary>

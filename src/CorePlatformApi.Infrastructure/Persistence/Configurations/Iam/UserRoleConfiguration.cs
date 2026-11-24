@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.user_roles</c>.
+/// Cấu hình EF Core cho bảng <c>user_roles</c>.
 /// </summary>
 public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
 {
     public void Configure(EntityTypeBuilder<UserRole> builder)
     {
-        builder.ToTable("user_roles", "iam", tb =>
+        builder.ToTable("user_roles", tb =>
         {
             tb.HasComment("Gán vai trò cho user, có thể giới hạn vai trò trong một công ty/chi nhánh và có thời hạn");
         });
@@ -28,32 +28,37 @@ public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
         builder.Property(x => x.UserId)
             .HasColumnName("user_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("User");
         builder.Property(x => x.RoleId)
             .HasColumnName("role_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .IsRequired()
             .HasComment("Vai trò");
         builder.Property(x => x.CompanyId)
             .HasColumnName("company_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(3)
+            .HasColumnOrder(4)
             .HasComment("Vai trò chỉ có hiệu lực trong công ty này (NULL = mọi công ty)");
         builder.Property(x => x.BranchId)
             .HasColumnName("branch_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(4)
+            .HasColumnOrder(5)
             .HasComment("Vai trò chỉ có hiệu lực trong chi nhánh này");
         builder.Property(x => x.ValidFrom)
             .HasColumnName("valid_from")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(5)
+            .HasColumnOrder(6)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
@@ -61,22 +66,22 @@ public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         builder.Property(x => x.ValidTo)
             .HasColumnName("valid_to")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(6)
+            .HasColumnOrder(7)
             .HasComment("Hiệu lực đến (gán quyền tạm thời)");
         builder.Property(x => x.GrantedBy)
             .HasColumnName("granted_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(7)
+            .HasColumnOrder(8)
             .HasComment("Người cấp quyền");
         builder.Property(x => x.Note)
             .HasColumnName("note")
             .HasColumnType("varchar(500)")
-            .HasColumnOrder(8)
+            .HasColumnOrder(9)
             .HasComment("Ghi chú lý do cấp");
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(9)
+            .HasColumnOrder(10)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
@@ -84,18 +89,36 @@ public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         builder.Property(x => x.CreatedBy)
             .HasColumnName("created_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(10)
+            .HasColumnOrder(11)
             .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
         builder.Property(x => x.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(11)
+            .HasColumnOrder(12)
             .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
         builder.Property(x => x.UpdatedBy)
             .HasColumnName("updated_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(12)
+            .HasColumnOrder(13)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(14)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(15)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(16)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.UserId, x.RoleId, x.CompanyId, x.BranchId }, "uq_user_roles")
             .IsUnique()

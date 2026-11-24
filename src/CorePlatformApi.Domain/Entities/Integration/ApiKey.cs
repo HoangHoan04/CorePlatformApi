@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -9,21 +9,9 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// API Key cấp cho đối tác/ứng dụng ngoài gọi vào ERP, có scope, IP whitelist, hạn dùng
 /// </summary>
-/// <remarks>Bảng <c>integration.api_keys</c>.</remarks>
-public class ApiKey : AuditableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>api_keys</c> (phân hệ integration).</remarks>
+public class ApiKey : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Gắn với client OAuth (nếu có)
     /// </summary>

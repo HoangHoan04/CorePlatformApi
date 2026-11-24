@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Danh sách đơn vị cụ thể khi data_scope = CUSTOM (VD: chỉ xem chi nhánh HN01 và HN02)
 /// </summary>
-/// <remarks>Bảng <c>iam.role_permission_scopes</c>.</remarks>
-public class RolePermissionScope : AuditableEntity
+/// <remarks>Bảng <c>role_permission_scopes</c> (phân hệ iam).</remarks>
+public class RolePermissionScope : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Quyền của vai trò
     /// </summary>

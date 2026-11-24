@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,8 +6,8 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Danh mục hành động chuẩn (VIEW, CREATE, UPDATE, DELETE, APPROVE, EXPORT, IMPORT, PRINT...)
 /// </summary>
-/// <remarks>Bảng <c>iam.permission_actions</c>.</remarks>
-public class PermissionAction : AuditableEntity
+/// <remarks>Bảng <c>permission_actions</c> (phân hệ iam).</remarks>
+public class PermissionAction : BaseEntity
 {
     /// <summary>
     /// Mã hành động

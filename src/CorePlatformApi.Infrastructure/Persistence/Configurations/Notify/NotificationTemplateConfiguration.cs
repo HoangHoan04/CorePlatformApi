@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Notify;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Notify;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>notify.templates</c>.
+/// Cấu hình EF Core cho bảng <c>templates</c>.
 /// </summary>
 public sealed class NotificationTemplateConfiguration : IEntityTypeConfiguration<NotificationTemplate>
 {
     public void Configure(EntityTypeBuilder<NotificationTemplate> builder)
     {
-        builder.ToTable("templates", "notify", tb =>
+        builder.ToTable("templates", tb =>
         {
             tb.HasComment("Mẫu nội dung theo sự kiện × kênh × ngôn ngữ, dùng biến {{employee_name}}. Tenant có thể ghi đè mẫu hệ thống");
             tb.HasCheckConstraint("templates_channel_check", "channel IN ('IN_APP','PUSH','EMAIL','SMS','ZALO')");
@@ -89,7 +89,7 @@ public sealed class NotificationTemplateConfiguration : IEntityTypeConfiguration
             .HasColumnType("varchar(100)")
             .HasColumnOrder(10)
             .HasComment("Mã template phía nhà cung cấp (Zalo ZNS, SMS brandname)");
-        builder.Property(x => x.Version)
+        builder.Property(x => x.TemplateVersion)
             .HasColumnName("version")
             .HasColumnType("int")
             .HasColumnOrder(11)

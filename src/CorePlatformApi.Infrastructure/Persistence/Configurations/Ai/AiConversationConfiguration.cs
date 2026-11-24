@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Iam;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.conversations</c>.
+/// Cấu hình EF Core cho bảng <c>conversations</c>.
 /// </summary>
 public sealed class AiConversationConfiguration : IEntityTypeConfiguration<AiConversation>
 {
     public void Configure(EntityTypeBuilder<AiConversation> builder)
     {
-        builder.ToTable("conversations", "ai", tb =>
+        builder.ToTable("conversations", tb =>
         {
             tb.HasComment("Hội thoại chatbot nội bộ");
         });
@@ -76,6 +76,39 @@ public sealed class AiConversationConfiguration : IEntityTypeConfiguration<AiCon
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Tạo lúc");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(9)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(10)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(11)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(12)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(13)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(14)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.UserId, x.LastMessageAt }, "ix_ai_conversations_user")
             .IsDescending(false, true);

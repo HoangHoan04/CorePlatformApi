@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,15 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Ngoại lệ của lịch: nghỉ riêng công ty, ngày làm bù, ngày đổi ca... áp dụng cho cả lịch hoặc riêng chi nhánh
 /// </summary>
-/// <remarks>Bảng <c>mdm.work_calendar_exceptions</c>.</remarks>
-public class WorkCalendarException : SoftDeletableEntity
+/// <remarks>Bảng <c>work_calendar_exceptions</c> (phân hệ mdm); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class WorkCalendarException : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Lịch
     /// </summary>

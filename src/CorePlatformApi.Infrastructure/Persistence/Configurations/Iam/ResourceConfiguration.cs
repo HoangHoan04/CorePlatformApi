@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.resources</c>.
+/// Cấu hình EF Core cho bảng <c>resources</c>.
 /// </summary>
 public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
 {
     public void Configure(EntityTypeBuilder<Resource> builder)
     {
-        builder.ToTable("resources", "iam", tb =>
+        builder.ToTable("resources", tb =>
         {
             tb.HasComment("Tài nguyên/chức năng (menu, màn hình, API) của từng phân hệ dạng cây. Permission = resource + action");
             tb.HasCheckConstraint("resources_resource_type_check", "resource_type IN ('MENU_GROUP','FUNCTION','REPORT','API')");
@@ -28,33 +28,38 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
         builder.Property(x => x.ModuleId)
             .HasColumnName("module_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Phân hệ");
         builder.Property(x => x.ParentId)
             .HasColumnName("parent_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .HasComment("Tài nguyên cha (nhóm menu)");
         builder.Property(x => x.Code)
             .HasColumnName("code")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(3)
+            .HasColumnOrder(4)
             .IsRequired()
             .HasComment("Mã tài nguyên (EMPLOYEE, LEAVE_REQUEST, GOODS_RECEIPT)");
         builder.Property(x => x.Name)
             .HasColumnName("name")
             .HasColumnType("varchar(255)")
-            .HasColumnOrder(4)
+            .HasColumnOrder(5)
             .IsRequired()
             .HasComment("Tên hiển thị");
         builder.Property(x => x.ResourceType)
             .HasColumnName("resource_type")
             .HasColumnType("varchar(20)")
-            .HasColumnOrder(5)
+            .HasColumnOrder(6)
             .IsRequired()
             .HasDefaultValueSql("'FUNCTION'")
             .ValueGeneratedNever()
@@ -62,17 +67,17 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(x => x.Route)
             .HasColumnName("route")
             .HasColumnType("varchar(255)")
-            .HasColumnOrder(6)
+            .HasColumnOrder(7)
             .HasComment("Route frontend (/hrm/employees)");
         builder.Property(x => x.Icon)
             .HasColumnName("icon")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(7)
+            .HasColumnOrder(8)
             .HasComment("Icon menu");
         builder.Property(x => x.SupportsDataScope)
             .HasColumnName("supports_data_scope")
             .HasColumnType("boolean")
-            .HasColumnOrder(8)
+            .HasColumnOrder(9)
             .IsRequired()
             .HasDefaultValueSql("true")
             .ValueGeneratedNever()
@@ -80,7 +85,7 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(x => x.SortOrder)
             .HasColumnName("sort_order")
             .HasColumnType("int")
-            .HasColumnOrder(9)
+            .HasColumnOrder(10)
             .IsRequired()
             .HasDefaultValueSql("0")
             .ValueGeneratedNever()
@@ -88,7 +93,7 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(x => x.IsVisible)
             .HasColumnName("is_visible")
             .HasColumnType("boolean")
-            .HasColumnOrder(10)
+            .HasColumnOrder(11)
             .IsRequired()
             .HasDefaultValueSql("true")
             .ValueGeneratedNever()
@@ -96,7 +101,7 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(x => x.IsActive)
             .HasColumnName("is_active")
             .HasColumnType("boolean")
-            .HasColumnOrder(11)
+            .HasColumnOrder(12)
             .IsRequired()
             .HasDefaultValueSql("true")
             .ValueGeneratedNever()
@@ -104,7 +109,7 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(12)
+            .HasColumnOrder(13)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
@@ -112,18 +117,36 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(x => x.CreatedBy)
             .HasColumnName("created_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(13)
+            .HasColumnOrder(14)
             .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
         builder.Property(x => x.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(14)
+            .HasColumnOrder(15)
             .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
         builder.Property(x => x.UpdatedBy)
             .HasColumnName("updated_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(15)
+            .HasColumnOrder(16)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(17)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(18)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(19)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.ModuleId, x.Code }, "uq_resources_code").IsUnique();
 

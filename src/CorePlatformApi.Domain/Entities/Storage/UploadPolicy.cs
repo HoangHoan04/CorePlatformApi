@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,21 +8,9 @@ namespace CorePlatformApi.Domain.Entities.Storage;
 /// <summary>
 /// Chính sách upload theo loại file: dung lượng, định dạng, nén/resize ảnh, bucket đích, mức nhạy cảm
 /// </summary>
-/// <remarks>Bảng <c>storage.upload_policies</c>.</remarks>
-public class UploadPolicy : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>upload_policies</c> (phân hệ storage).</remarks>
+public class UploadPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = mặc định)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Loại file (AVATAR, LABOR_CONTRACT, PAYSLIP, INVOICE, PRODUCT_IMAGE, ATTACHMENT, KB_DOCUMENT)
     /// </summary>

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,8 +7,8 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Danh mục loại chứng từ/đối tượng nghiệp vụ toàn hệ sinh thái — khóa chung để gắn sinh mã, workflow, file, thông báo
 /// </summary>
-/// <remarks>Bảng <c>mdm.document_types</c>.</remarks>
-public class DocumentType : AuditableEntity
+/// <remarks>Bảng <c>document_types</c> (phân hệ mdm).</remarks>
+public class DocumentType : BaseEntity
 {
     /// <summary>
     /// Mã loại chứng từ (HRM_EMPLOYEE, HRM_LEAVE_REQUEST, WMS_GOODS_RECEIPT, CRM_QUOTATION)

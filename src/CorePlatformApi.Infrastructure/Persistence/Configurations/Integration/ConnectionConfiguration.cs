@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Integration;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.connections</c>.
+/// Cấu hình EF Core cho bảng <c>connections</c>.
 /// </summary>
 public sealed class ConnectionConfiguration : IEntityTypeConfiguration<Connection>
 {
     public void Configure(EntityTypeBuilder<Connection> builder)
     {
-        builder.ToTable("connections", "integration", tb =>
+        builder.ToTable("connections", tb =>
         {
             tb.HasComment("Kết nối tới hệ thống bên thứ 3 (lưu credential/OAuth token): sàn TMĐT, nhà cung cấp HĐĐT, ngân hàng, Zalo OA...");
             tb.HasCheckConstraint("connections_auth_type_check", "auth_type IN ('API_KEY','BASIC','OAUTH2','CERTIFICATE','CUSTOM')");

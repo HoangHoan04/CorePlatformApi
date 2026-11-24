@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Integration;
@@ -6,25 +6,14 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Nhật ký từng lần gửi webhook outbound (payload, response, retry)
 /// </summary>
-/// <remarks>Bảng <c>integration.webhook_deliveries</c>.</remarks>
-public class WebhookDelivery : IMayHaveTenant
+/// <remarks>Bảng <c>webhook_deliveries</c> (phân hệ integration).</remarks>
+public class WebhookDelivery : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Endpoint
     /// </summary>
     /// <remarks>FK → <c>integration.webhook_endpoints(id)</c></remarks>
     public Guid EndpointId { get; set; }
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Event gốc (outbox_messages.id)
@@ -87,12 +76,6 @@ public class WebhookDelivery : IMayHaveTenant
     /// Lần retry tiếp
     /// </summary>
     public DateTimeOffset? NextRetryAt { get; set; }
-
-    /// <summary>
-    /// Tạo lúc
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     /// <summary>
     /// Hoàn tất lúc

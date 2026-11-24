@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.security_policies</c>.
+/// Cấu hình EF Core cho bảng <c>security_policies</c>.
 /// </summary>
 public sealed class SecurityPolicyConfiguration : IEntityTypeConfiguration<SecurityPolicy>
 {
     public void Configure(EntityTypeBuilder<SecurityPolicy> builder)
     {
-        builder.ToTable("security_policies", "iam", tb =>
+        builder.ToTable("security_policies", tb =>
         {
             tb.HasComment("Chính sách bảo mật tài khoản theo tenant (NULL = mặc định toàn hệ thống)");
             tb.HasCheckConstraint("security_policies_device_limit_action_check", "device_limit_action IN ('REVOKE_OLDEST','BLOCK_NEW')");
@@ -197,6 +197,24 @@ public sealed class SecurityPolicyConfiguration : IEntityTypeConfiguration<Secur
             .HasColumnType("uuid")
             .HasColumnOrder(24)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(25)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(26)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(27)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => x.TenantId, "security_policies_tenant_id_key").IsUnique();
 

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Mdm;
@@ -9,21 +9,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Một lượt chạy quy trình cho một chứng từ cụ thể
 /// </summary>
-/// <remarks>Bảng <c>workflow.instances</c>.</remarks>
-public class WorkflowInstance : AuditableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>instances</c> (phân hệ workflow).</remarks>
+public class WorkflowInstance : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Quy trình
     /// </summary>
@@ -166,7 +154,7 @@ public class WorkflowInstance : AuditableEntity, IMustHaveTenant
     /// <summary>
     /// Điều hướng tới Phiên bản quy trình (qua <c>version_id</c>).
     /// </summary>
-    public WorkflowDefinitionVersion Version { get; set; } = null!;
+    public WorkflowDefinitionVersion WorkflowDefinitionVersion { get; set; } = null!;
 
     /// <summary>
     /// Điều hướng tới Danh mục loại chứng từ/đối tượng nghiệp vụ toàn hệ sinh thái — khóa chung để gắn sinh mã, workflow, file, thông báo (qua <c>document_type_code</c>).

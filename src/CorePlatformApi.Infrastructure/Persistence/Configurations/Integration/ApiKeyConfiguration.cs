@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Integration;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Integration;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>integration.api_keys</c>.
+/// Cấu hình EF Core cho bảng <c>api_keys</c>.
 /// </summary>
 public sealed class ApiKeyConfiguration : IEntityTypeConfiguration<ApiKey>
 {
     public void Configure(EntityTypeBuilder<ApiKey> builder)
     {
-        builder.ToTable("api_keys", "integration", tb =>
+        builder.ToTable("api_keys", tb =>
         {
             tb.HasComment("API Key cấp cho đối tác/ứng dụng ngoài gọi vào ERP, có scope, IP whitelist, hạn dùng");
             tb.HasCheckConstraint("api_keys_environment_check", "environment IN ('LIVE','TEST')");
@@ -165,6 +165,24 @@ public sealed class ApiKeyConfiguration : IEntityTypeConfiguration<ApiKey>
             .HasColumnType("uuid")
             .HasColumnOrder(23)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(24)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(25)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(26)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => x.KeyPrefix, "api_keys_key_prefix_key").IsUnique();
         builder.HasIndex(x => x.KeyHash, "api_keys_key_hash_key").IsUnique();

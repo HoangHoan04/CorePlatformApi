@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Config;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Rule target của flag theo tenant/công ty/chi nhánh/vai trò/user, có thời gian hiệu lực
 /// </summary>
-/// <remarks>Bảng <c>config.feature_flag_rules</c>.</remarks>
-public class FeatureFlagRule : AuditableEntity
+/// <remarks>Bảng <c>feature_flag_rules</c> (phân hệ config).</remarks>
+public class FeatureFlagRule : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Flag
     /// </summary>

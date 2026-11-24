@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Tài nguyên/chức năng (menu, màn hình, API) của từng phân hệ dạng cây. Permission = resource + action
 /// </summary>
-/// <remarks>Bảng <c>iam.resources</c>.</remarks>
-public class Resource : AuditableEntity
+/// <remarks>Bảng <c>resources</c> (phân hệ iam).</remarks>
+public class Resource : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phân hệ
     /// </summary>

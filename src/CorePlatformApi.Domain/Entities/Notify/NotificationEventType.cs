@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Loại sự kiện thông báo do các phân hệ khai báo (hrm.leave_request.submitted, wms.stock.low...)
 /// </summary>
-/// <remarks>Bảng <c>notify.event_types</c>.</remarks>
-public class NotificationEventType : AuditableEntity
+/// <remarks>Bảng <c>notify_event_types</c> (phân hệ notify).</remarks>
+public class NotificationEventType : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phân hệ phát sinh
     /// </summary>

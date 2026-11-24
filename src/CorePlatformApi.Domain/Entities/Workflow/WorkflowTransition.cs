@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Workflow;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Cạnh nối giữa các bước kèm điều kiện rẽ nhánh (VD: amount &lt; 10000000 → Trưởng BP; &gt;= 50000000 → Giám đốc)
 /// </summary>
-/// <remarks>Bảng <c>workflow.transitions</c>.</remarks>
-public class WorkflowTransition : AuditableEntity
+/// <remarks>Bảng <c>transitions</c> (phân hệ workflow).</remarks>
+public class WorkflowTransition : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phiên bản
     /// </summary>
@@ -71,7 +65,7 @@ public class WorkflowTransition : AuditableEntity
     /// <summary>
     /// Điều hướng tới Phiên bản quy trình (qua <c>version_id</c>).
     /// </summary>
-    public WorkflowDefinitionVersion Version { get; set; } = null!;
+    public WorkflowDefinitionVersion WorkflowDefinitionVersion { get; set; } = null!;
 
     /// <summary>
     /// Điều hướng tới Bước (node) trong quy trình: bắt đầu, duyệt, điều kiện, song song, thông báo, kết thúc (qua <c>from_step_id</c>).

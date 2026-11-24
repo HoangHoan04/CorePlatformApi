@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Biểu thuế suất có hiệu lực theo thời gian (VD: VAT giảm 8% theo từng nghị định)
 /// </summary>
-/// <remarks>Bảng <c>mdm.tax_rates</c>.</remarks>
-public class TaxRate : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>tax_rates</c> (phân hệ mdm).</remarks>
+public class TaxRate : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = biểu thuế chuẩn)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Loại thuế
     /// </summary>

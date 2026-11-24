@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Audit;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Audit;
 /// <summary>
 /// Cấu hình đối tượng cần lưu vết thay đổi và trường cần che (lương, CCCD...)
 /// </summary>
-/// <remarks>Bảng <c>audit.audit_policies</c>.</remarks>
-public class AuditPolicy : AuditableEntity
+/// <remarks>Bảng <c>audit_policies</c> (phân hệ audit).</remarks>
+public class AuditPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phân hệ
     /// </summary>

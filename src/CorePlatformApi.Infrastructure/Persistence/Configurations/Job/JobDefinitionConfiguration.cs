@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Job;
 using Microsoft.EntityFrameworkCore;
@@ -7,18 +7,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Job;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>job.definitions</c>.
+/// Cấu hình EF Core cho bảng <c>job_definitions</c>.
 /// </summary>
 public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDefinition>
 {
     public void Configure(EntityTypeBuilder<JobDefinition> builder)
     {
-        builder.ToTable("definitions", "job", tb =>
+        builder.ToTable("job_definitions", tb =>
         {
             tb.HasComment("Danh mục job định kỳ toàn hệ thống (chốt công cuối ngày, cảnh báo tồn kho, dọn file rác, đồng bộ tỷ giá...)");
         });
 
-        builder.HasKey(x => x.Id).HasName("definitions_pkey");
+        builder.HasKey(x => x.Id).HasName("job_definitions_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -28,48 +28,53 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
         builder.Property(x => x.Code)
             .HasColumnName("code")
             .HasColumnType("varchar(150)")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Mã job (core.storage.cleanup_temp_files)");
         builder.Property(x => x.ModuleId)
             .HasColumnName("module_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .HasComment("Phân hệ sở hữu");
         builder.Property(x => x.Name)
             .HasColumnName("name")
             .HasColumnType("varchar(255)")
-            .HasColumnOrder(3)
+            .HasColumnOrder(4)
             .IsRequired()
             .HasComment("Tên");
         builder.Property(x => x.Description)
             .HasColumnName("description")
             .HasColumnType("text")
-            .HasColumnOrder(4)
+            .HasColumnOrder(5)
             .HasComment("Mô tả");
         builder.Property(x => x.Handler)
             .HasColumnName("handler")
             .HasColumnType("varchar(500)")
-            .HasColumnOrder(5)
+            .HasColumnOrder(6)
             .IsRequired()
             .HasComment("Tên class/handler thực thi (Assembly.Namespace.JobClass)");
         builder.Property(x => x.TargetService)
             .HasColumnName("target_service")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(6)
+            .HasColumnOrder(7)
             .HasComment("Service chạy job (hrm-worker, core-worker)");
         builder.Property(x => x.CronExpression)
             .HasColumnName("cron_expression")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(7)
+            .HasColumnOrder(8)
             .HasComment("Lịch cron (NULL = chỉ chạy tay)");
         builder.Property(x => x.Timezone)
             .HasColumnName("timezone")
             .HasColumnType("varchar(50)")
-            .HasColumnOrder(8)
+            .HasColumnOrder(9)
             .IsRequired()
             .HasDefaultValueSql("'Asia/Ho_Chi_Minh'")
             .ValueGeneratedNever()
@@ -77,7 +82,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.RunPerTenant)
             .HasColumnName("run_per_tenant")
             .HasColumnType("boolean")
-            .HasColumnOrder(9)
+            .HasColumnOrder(10)
             .IsRequired()
             .HasDefaultValueSql("false")
             .ValueGeneratedNever()
@@ -85,7 +90,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.Parameters)
             .HasColumnName("parameters")
             .HasColumnType("jsonb")
-            .HasColumnOrder(10)
+            .HasColumnOrder(11)
             .IsRequired()
             .HasDefaultValueSql("'{}'")
             .ValueGeneratedNever()
@@ -93,7 +98,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.QueueName)
             .HasColumnName("queue_name")
             .HasColumnType("varchar(50)")
-            .HasColumnOrder(11)
+            .HasColumnOrder(12)
             .IsRequired()
             .HasDefaultValueSql("'default'")
             .ValueGeneratedNever()
@@ -101,7 +106,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.TimeoutSeconds)
             .HasColumnName("timeout_seconds")
             .HasColumnType("int")
-            .HasColumnOrder(12)
+            .HasColumnOrder(13)
             .IsRequired()
             .HasDefaultValueSql("3600")
             .ValueGeneratedNever()
@@ -109,7 +114,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.MaxRetries)
             .HasColumnName("max_retries")
             .HasColumnType("smallint")
-            .HasColumnOrder(13)
+            .HasColumnOrder(14)
             .IsRequired()
             .HasDefaultValueSql("3")
             .ValueGeneratedNever()
@@ -117,7 +122,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.AllowConcurrent)
             .HasColumnName("allow_concurrent")
             .HasColumnType("boolean")
-            .HasColumnOrder(14)
+            .HasColumnOrder(15)
             .IsRequired()
             .HasDefaultValueSql("false")
             .ValueGeneratedNever()
@@ -125,7 +130,7 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.NotifyOnFailure)
             .HasColumnName("notify_on_failure")
             .HasColumnType("boolean")
-            .HasColumnOrder(15)
+            .HasColumnOrder(16)
             .IsRequired()
             .HasDefaultValueSql("true")
             .ValueGeneratedNever()
@@ -133,12 +138,12 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.NotifyUserIds)
             .HasColumnName("notify_user_ids")
             .HasColumnType("uuid[]")
-            .HasColumnOrder(16)
+            .HasColumnOrder(17)
             .HasComment("Người nhận cảnh báo");
         builder.Property(x => x.IsEnabled)
             .HasColumnName("is_enabled")
             .HasColumnType("boolean")
-            .HasColumnOrder(17)
+            .HasColumnOrder(18)
             .IsRequired()
             .HasDefaultValueSql("true")
             .ValueGeneratedNever()
@@ -146,22 +151,22 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.LastRunAt)
             .HasColumnName("last_run_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(18)
+            .HasColumnOrder(19)
             .HasComment("Lần chạy gần nhất");
         builder.Property(x => x.LastStatus)
             .HasColumnName("last_status")
             .HasColumnType("varchar(15)")
-            .HasColumnOrder(19)
+            .HasColumnOrder(20)
             .HasComment("Kết quả lần gần nhất");
         builder.Property(x => x.NextRunAt)
             .HasColumnName("next_run_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(20)
+            .HasColumnOrder(21)
             .HasComment("Lần chạy kế tiếp (tham khảo)");
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(21)
+            .HasColumnOrder(22)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
@@ -169,25 +174,43 @@ public sealed class JobDefinitionConfiguration : IEntityTypeConfiguration<JobDef
         builder.Property(x => x.CreatedBy)
             .HasColumnName("created_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(22)
+            .HasColumnOrder(23)
             .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
         builder.Property(x => x.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(23)
+            .HasColumnOrder(24)
             .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
         builder.Property(x => x.UpdatedBy)
             .HasColumnName("updated_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(24)
+            .HasColumnOrder(25)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(26)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(27)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(28)
+            .HasComment("Người xóa mềm (users.id)");
 
-        builder.HasIndex(x => x.Code, "definitions_code_key").IsUnique();
+        builder.HasIndex(x => x.Code, "job_definitions_code_key").IsUnique();
 
         builder.HasOne(x => x.Module)
             .WithMany()
             .HasForeignKey(x => x.ModuleId)
-            .HasConstraintName("definitions_module_id_fkey")
+            .HasConstraintName("job_definitions_module_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
     }
 }

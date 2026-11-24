@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 using System.Net;
@@ -8,21 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Ứng dụng client (OAuth2/OIDC): Core Admin, HRM Web, HRM Mobile, WMS Mobile, service nội bộ, ứng dụng đối tác
 /// </summary>
-/// <remarks>Bảng <c>iam.oauth_clients</c>.</remarks>
-public class OauthClient : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>oauth_clients</c> (phân hệ iam); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class OauthClient : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant sở hữu (NULL = client hệ thống dùng chung)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// client_id công khai
     /// </summary>

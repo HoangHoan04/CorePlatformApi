@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,21 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Prompt template dùng chung theo phân hệ (tóm tắt CV - HRM, phân tích KH - CRM, gợi ý đặt hàng - WMS)
 /// </summary>
-/// <remarks>Bảng <c>ai.prompt_templates</c>.</remarks>
-public class AiPromptTemplate : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>prompt_templates</c> (phân hệ ai); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class AiPromptTemplate : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = prompt hệ thống, tenant có thể ghi đè)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Phân hệ sử dụng
     /// </summary>

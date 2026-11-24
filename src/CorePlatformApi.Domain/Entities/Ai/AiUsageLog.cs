@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Ai;
@@ -6,20 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Log từng lần gọi AI: token, chi phí, độ trễ (không lưu nội dung prompt theo mặc định vì dữ liệu nhạy cảm)
 /// </summary>
-/// <remarks>Bảng <c>ai.usage_logs</c>; partition RANGE theo <c>created_at</c> (tạo bằng SQL thô, không qua EF migration).</remarks>
-public class AiUsageLog : IMayHaveTenant
+/// <remarks>Bảng <c>usage_logs</c> (phân hệ ai).</remarks>
+public class AiUsageLog : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Phân hệ gọi
     /// </summary>
@@ -138,10 +127,4 @@ public class AiUsageLog : IMayHaveTenant
     /// Trace id
     /// </summary>
     public string? TraceId { get; set; }
-
-    /// <summary>
-    /// Thời điểm gọi
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

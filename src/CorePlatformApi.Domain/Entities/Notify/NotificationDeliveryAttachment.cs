@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Storage;
 
 namespace CorePlatformApi.Domain.Entities.Notify;
@@ -6,8 +7,8 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// File đính kèm email
 /// </summary>
-/// <remarks>Bảng <c>notify.delivery_attachments</c>.</remarks>
-public class NotificationDeliveryAttachment
+/// <remarks>Bảng <c>delivery_attachments</c> (phân hệ notify).</remarks>
+public class NotificationDeliveryAttachment : BaseEntity
 {
     /// <summary>
     /// Lượt gửi

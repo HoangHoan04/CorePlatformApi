@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Job;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Job;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>job.executions</c>.
+/// Cấu hình EF Core cho bảng <c>executions</c>.
 /// </summary>
 public sealed class JobExecutionConfiguration : IEntityTypeConfiguration<JobExecution>
 {
     public void Configure(EntityTypeBuilder<JobExecution> builder)
     {
-        builder.ToTable("executions", "job", tb =>
+        builder.ToTable("executions", tb =>
         {
             tb.HasComment("Lịch sử từng lần chạy job");
             tb.HasCheckConstraint("executions_trigger_type_check", "trigger_type IN ('SCHEDULED','MANUAL','RETRY','EVENT','API')");
@@ -29,17 +29,17 @@ public sealed class JobExecutionConfiguration : IEntityTypeConfiguration<JobExec
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
-        builder.Property(x => x.JobId)
-            .HasColumnName("job_id")
-            .HasColumnType("uuid")
-            .HasColumnOrder(1)
-            .IsRequired()
-            .HasComment("Job");
         builder.Property(x => x.TenantId)
             .HasColumnName("tenant_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
+            .HasColumnOrder(1)
             .HasComment("Tenant (job chạy theo tenant)");
+        builder.Property(x => x.JobId)
+            .HasColumnName("job_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(2)
+            .IsRequired()
+            .HasComment("Job");
         builder.Property(x => x.TriggerType)
             .HasColumnName("trigger_type")
             .HasColumnType("varchar(15)")
@@ -132,6 +132,47 @@ public sealed class JobExecutionConfiguration : IEntityTypeConfiguration<JobExec
             .HasColumnType("int")
             .HasColumnOrder(18)
             .HasComment("Thời gian chạy");
+        builder.Property(x => x.CreatedAt)
+            .HasColumnName("created_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(19)
+            .IsRequired()
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedNever()
+            .HasComment("Thời điểm tạo bản ghi");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(20)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(21)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(22)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(23)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(24)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(25)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.JobId, x.StartedAt }, "ix_job_executions_job")
             .IsDescending(false, true);

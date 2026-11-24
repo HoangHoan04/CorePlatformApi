@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.model_aliases</c>.
+/// Cấu hình EF Core cho bảng <c>model_aliases</c>.
 /// </summary>
 public sealed class AiModelAliasConfiguration : IEntityTypeConfiguration<AiModelAlias>
 {
     public void Configure(EntityTypeBuilder<AiModelAlias> builder)
     {
-        builder.ToTable("model_aliases", "ai", tb =>
+        builder.ToTable("model_aliases", tb =>
         {
             tb.HasComment("Alias model logic (default-chat, cheap-summary, embedding-default) để đổi model không cần sửa code; hỗ trợ fallback");
         });
@@ -67,6 +67,24 @@ public sealed class AiModelAliasConfiguration : IEntityTypeConfiguration<AiModel
             .HasColumnType("uuid")
             .HasColumnOrder(7)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(8)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(9)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(10)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.Code }, "uq_ai_model_aliases")
             .IsUnique()

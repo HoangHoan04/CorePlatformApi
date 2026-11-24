@@ -11,11 +11,33 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 
     public Guid? TenantId => FindGuid("tenant_id", "tenantId");
 
-    public string? Username => FindValue(ClaimTypes.Name, "name", "username", "preferred_username");
+    public Guid? SessionId => FindGuid("sid");
+
+    public bool IsPlatformAdmin => string.Equals(FindValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase);
+
+    public string? Username => FindValue("preferred_username", ClaimTypes.Name, "username", "name");
 
     public string? IpAddress => httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     public string? UserAgent => httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString();
+
+    /// <summary>
+    /// Ngôn ngữ đầu tiên trong Accept-Language ("vi-VN,vi;q=0.9" -> "vi-VN").
+    /// </summary>
+    public string? Language
+    {
+        get
+        {
+            var header = httpContextAccessor.HttpContext?.Request.Headers.AcceptLanguage.ToString();
+            if (string.IsNullOrWhiteSpace(header))
+            {
+                return null;
+            }
+
+            var first = header.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+            return first?.Split(';')[0].Trim() is { Length: > 0 } lang && lang != "*" ? lang : null;
+        }
+    }
 
     /// <summary>
     /// Tìm claim không phân biệt hoa thường (JwtBearer 8.x dùng CaseSensitiveClaimsIdentity).

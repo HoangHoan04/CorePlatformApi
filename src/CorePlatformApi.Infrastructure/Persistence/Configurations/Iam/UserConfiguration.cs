@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
 using CorePlatformApi.Domain.Entities.Storage;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Iam;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>iam.users</c>.
+/// Cấu hình EF Core cho bảng <c>users</c>.
 /// </summary>
 public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("users", "iam", tb =>
+        builder.ToTable("users", tb =>
         {
             tb.HasComment("Tài khoản người dùng dùng chung SSO cho mọi phân hệ (Web & Mobile)");
             tb.HasCheckConstraint("users_gender_check", "gender IN ('MALE','FEMALE','OTHER')");

@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using System.Net;
 
 namespace CorePlatformApi.Domain.Entities.Workflow;
@@ -6,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Lịch sử thao tác trên instance (timeline duyệt)
 /// </summary>
-/// <remarks>Bảng <c>workflow.action_logs</c>.</remarks>
-public class WorkflowActionLog
+/// <remarks>Bảng <c>action_logs</c> (phân hệ workflow).</remarks>
+public class WorkflowActionLog : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Instance
     /// </summary>
@@ -83,12 +78,6 @@ public class WorkflowActionLog
     /// IP
     /// </summary>
     public IPAddress? IpAddress { get; set; }
-
-    /// <summary>
-    /// Thời điểm
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

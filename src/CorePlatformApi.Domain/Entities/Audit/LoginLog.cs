@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using System.Net;
 
@@ -7,20 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Audit;
 /// <summary>
 /// Lịch sử đăng nhập/đăng xuất/refresh token (thành công &amp; thất bại) kèm IP, thiết bị
 /// </summary>
-/// <remarks>Bảng <c>audit.login_logs</c>; partition RANGE theo <c>occurred_at</c> (tạo bằng SQL thô, không qua EF migration).</remarks>
-public class LoginLog : IMayHaveTenant
+/// <remarks>Bảng <c>login_logs</c> (phân hệ audit).</remarks>
+public class LoginLog : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// User (NULL nếu username không tồn tại)
     /// </summary>

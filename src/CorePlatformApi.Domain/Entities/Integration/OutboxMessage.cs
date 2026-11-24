@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Integration;
@@ -6,20 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Transactional Outbox: event được ghi cùng transaction nghiệp vụ, worker đọc và publish lên message broker
 /// </summary>
-/// <remarks>Bảng <c>integration.outbox_messages</c>.</remarks>
-public class OutboxMessage : IMayHaveTenant
+/// <remarks>Bảng <c>outbox_messages</c> (phân hệ integration).</remarks>
+public class OutboxMessage : BaseEntity
 {
-    /// <summary>
-    /// Message id (dùng làm idempotency key phía consumer)
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Mã event
     /// </summary>

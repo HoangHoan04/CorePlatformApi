@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Mẫu ngày làm việc trong tuần của lịch (T2..CN, giờ vào/ra, nghỉ trưa)
 /// </summary>
-/// <remarks>Bảng <c>mdm.work_calendar_weekdays</c>.</remarks>
-public class WorkCalendarWeekday : AuditableEntity
+/// <remarks>Bảng <c>work_calendar_weekdays</c> (phân hệ mdm).</remarks>
+public class WorkCalendarWeekday : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Lịch
     /// </summary>

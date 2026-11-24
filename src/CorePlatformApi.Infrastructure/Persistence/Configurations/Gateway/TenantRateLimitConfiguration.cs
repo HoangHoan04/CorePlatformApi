@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Gateway;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Gateway;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>gateway.tenant_rate_limits</c>.
+/// Cấu hình EF Core cho bảng <c>tenant_rate_limits</c>.
 /// </summary>
 public sealed class TenantRateLimitConfiguration : IEntityTypeConfiguration<TenantRateLimit>
 {
     public void Configure(EntityTypeBuilder<TenantRateLimit> builder)
     {
-        builder.ToTable("tenant_rate_limits", "gateway", tb =>
+        builder.ToTable("tenant_rate_limits", tb =>
         {
             tb.HasComment("Ghi đè hạn mức rate limit cho tenant cụ thể (gói cao cấp được nhiều request hơn)");
         });
@@ -74,6 +74,24 @@ public sealed class TenantRateLimitConfiguration : IEntityTypeConfiguration<Tena
             .HasColumnType("uuid")
             .HasColumnOrder(8)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(9)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(10)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(11)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.PolicyId }, "uq_tenant_rate_limits").IsUnique();
 

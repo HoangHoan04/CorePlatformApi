@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Bản dịch theo ngôn ngữ; tenant có thể ghi đè thuật ngữ riêng (VD: "Nhân viên" → "Cộng sự")
 /// </summary>
-/// <remarks>Bảng <c>config.translations</c>.</remarks>
-public class Translation : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>translations</c> (phân hệ config).</remarks>
+public class Translation : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Khóa dịch
     /// </summary>
@@ -27,12 +21,6 @@ public class Translation : AuditableEntity, IMayHaveTenant
     /// </summary>
     /// <remarks>FK → <c>config.languages(code)</c></remarks>
     public string LanguageCode { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Tenant ghi đè (NULL = bản dịch chuẩn)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Nội dung dịch (hỗ trợ ICU {count, plural, ...})

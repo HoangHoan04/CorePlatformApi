@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Org;
 using CorePlatformApi.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -7,19 +7,19 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Storage;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>storage.providers</c>.
+/// Cấu hình EF Core cho bảng <c>storage_providers</c>.
 /// </summary>
 public sealed class StorageProviderConfiguration : IEntityTypeConfiguration<StorageProvider>
 {
     public void Configure(EntityTypeBuilder<StorageProvider> builder)
     {
-        builder.ToTable("providers", "storage", tb =>
+        builder.ToTable("storage_providers", tb =>
         {
             tb.HasComment("Cấu hình nhà cung cấp Object Storage (MinIO, S3, R2...). Hỗ trợ tenant dùng storage riêng");
-            tb.HasCheckConstraint("providers_provider_type_check", "provider_type IN ('MINIO','S3','R2','GCS','AZURE_BLOB','LOCAL')");
+            tb.HasCheckConstraint("storage_providers_provider_type_check", "provider_type IN ('MINIO','S3','R2','GCS','AZURE_BLOB','LOCAL')");
         });
 
-        builder.HasKey(x => x.Id).HasName("providers_pkey");
+        builder.HasKey(x => x.Id).HasName("storage_providers_pkey");
 
         builder.Property(x => x.Id)
             .HasColumnName("id")
@@ -118,6 +118,24 @@ public sealed class StorageProviderConfiguration : IEntityTypeConfiguration<Stor
             .HasColumnType("uuid")
             .HasColumnOrder(15)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(16)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(17)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(18)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.Code }, "uq_storage_providers_code")
             .IsUnique()
@@ -126,7 +144,7 @@ public sealed class StorageProviderConfiguration : IEntityTypeConfiguration<Stor
         builder.HasOne(x => x.Tenant)
             .WithMany()
             .HasForeignKey(x => x.TenantId)
-            .HasConstraintName("providers_tenant_id_fkey")
+            .HasConstraintName("storage_providers_tenant_id_fkey")
             .OnDelete(DeleteBehavior.NoAction);
     }
 }

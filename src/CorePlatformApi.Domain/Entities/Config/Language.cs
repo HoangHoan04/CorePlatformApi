@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Config;
@@ -6,8 +6,8 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Ngôn ngữ hệ thống hỗ trợ
 /// </summary>
-/// <remarks>Bảng <c>config.languages</c>.</remarks>
-public class Language : AuditableEntity
+/// <remarks>Bảng <c>languages</c> (phân hệ config).</remarks>
+public class Language : BaseEntity
 {
     /// <summary>
     /// Mã BCP-47 (vi-VN, en-US)

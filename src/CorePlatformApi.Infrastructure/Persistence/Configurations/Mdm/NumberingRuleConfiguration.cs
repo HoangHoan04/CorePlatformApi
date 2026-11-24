@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.numbering_rules</c>.
+/// Cấu hình EF Core cho bảng <c>numbering_rules</c>.
 /// </summary>
 public sealed class NumberingRuleConfiguration : IEntityTypeConfiguration<NumberingRule>
 {
     public void Configure(EntityTypeBuilder<NumberingRule> builder)
     {
-        builder.ToTable("numbering_rules", "mdm", tb =>
+        builder.ToTable("numbering_rules", tb =>
         {
             tb.HasComment("Quy tắc sinh mã tự động theo loại chứng từ, có thể riêng theo công ty/chi nhánh. Pattern hỗ trợ token {YYYY} {YY} {MM} {DD} {YYMM} {BRANCH} {COMPANY} {0001}");
             tb.HasCheckConstraint("numbering_rules_padding_length_check", "padding_length BETWEEN 1 AND 12");
@@ -191,6 +191,7 @@ public sealed class NumberingRuleConfiguration : IEntityTypeConfiguration<Number
         builder.HasOne(x => x.DocumentType)
             .WithMany()
             .HasForeignKey(x => x.DocumentTypeCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("numbering_rules_document_type_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.Company)

@@ -7,7 +7,8 @@ from collections import defaultdict
 sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sqlparse import parse, strip_line_comment  # noqa: E402
-from naming import SCHEMA_NS, class_name, plural, prop_name  # noqa: E402
+from sqlparse import Column  # noqa: E402
+from naming import PROP_OVERRIDES, SCHEMA_NS, TABLE_RENAMES, class_name, plural, prop_name  # noqa: E402
 
 SQL_PATH, ROOT = sys.argv[1], sys.argv[2]   # ROOT = CorePlatformApi/src
 DOMAIN = os.path.join(ROOT, 'CorePlatformApi.Domain')
@@ -19,12 +20,94 @@ by_full = {t.full: t for t in tables}
 cls = {t.full: class_name(t) for t in tables}
 assert len(set(cls.values())) == len(cls), 'duplicate class names'
 
-HEADER = '// Nguồn schema: docs/base_erp_core.sql\n'
+HEADER = '// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)\n'
 
-AUDIT_COLS = ['created_at', 'created_by', 'updated_at', 'updated_by']
-SOFT_COLS = ['is_deleted', 'deleted_at', 'deleted_by']
 VECTOR_TABLE, VECTOR_COL = 'ai.kb_chunks', 'embedding'
 SHADOW_COLS = {('ai.kb_chunks', 'content_tsv'): ('ContentTsv', 'NpgsqlTsVector')}
+
+# ---------------------------------------------------------------- flatten model
+# Mọi bảng: một schema (public), khóa chính id (uuid v7) và đủ cột của BaseEntity.
+#  * Khóa tự nhiên cũ (code, key, composite...) -> UNIQUE; FK trỏ tới chúng vẫn giữ (alternate key).
+#  * Bảng partition -> bảng thường.
+#  * Bảng gốc đã có is_deleted -> [SoftDelete] (Remove() = xóa mềm); bảng khác Remove() = xóa thật,
+#    tránh đụng UNIQUE khi thêm lại bản ghi đã xóa.
+BASE_COLS = ['id', 'tenant_id', 'created_at', 'created_by', 'updated_at', 'updated_by', 'is_deleted', 'deleted_at', 'deleted_by']
+BASE_PROPS = {prop_name(c) for c in BASE_COLS} | {'Version'}
+BASE_DEFS = {
+    'id': ('uuid', True, 'gen_random_uuid()', 'Khóa chính (UUID v7)'),
+    'tenant_id': ('uuid', False, None, 'Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống'),
+    'created_at': ('timestamptz', True, 'now()', 'Thời điểm tạo bản ghi'),
+    'created_by': ('uuid', False, None, 'Người tạo (users.id); NULL nếu hệ thống tạo'),
+    'updated_at': ('timestamptz', False, None, 'Thời điểm cập nhật gần nhất (trigger tự gán)'),
+    'updated_by': ('uuid', False, None, 'Người cập nhật gần nhất (users.id)'),
+    'is_deleted': ('boolean', True, 'false', 'Cờ xóa mềm (true = đã xóa)'),
+    'deleted_at': ('timestamptz', False, None, 'Thời điểm xóa mềm'),
+    'deleted_by': ('uuid', False, None, 'Người xóa mềm (users.id)'),
+}
+
+
+def flatten(t):
+    t.table = TABLE_RENAMES.get(t.full, t.name)
+    t.soft_delete = any(c.name == 'is_deleted' for c in t.columns)
+    t.partition_by = None
+    if t.pk != ['id']:
+        old = list(t.pk)
+        t.uniques.insert(0, (f'{t.table}_{"_".join(old)}_key', old))
+        for c in t.columns:
+            if c.name in old:
+                c.pk = False
+        t.pk = ['id']
+    existing = {c.name: c for c in t.columns}
+    base = {}
+    for name in BASE_COLS:
+        sql_type, not_null, default, comment = BASE_DEFS[name]
+        c = existing.get(name)
+        if c is None:
+            c = Column(name=name, sql_type=sql_type, not_null=not_null, default=default, comment=comment)
+        else:
+            assert c.sql_type == sql_type, (t.full, name, c.sql_type)
+            assert not c.ref_table or name == 'tenant_id', (t.full, name)
+            if not_null:
+                c.not_null = True
+                c.default = c.default or default
+            c.comment = c.comment or comment
+        base[name] = c
+    base['id'].pk, base['id'].unique = True, False
+    business = [c for c in t.columns if c.name not in BASE_COLS]
+    t.columns = [base['id'], base['tenant_id']] + business + [base[n] for n in BASE_COLS[2:]]
+
+
+for _t in tables:
+    flatten(_t)
+assert len({t.table for t in tables}) == len(tables), 'duplicate table names'
+
+
+def cprop(t, col):
+    """Tên thuộc tính C# của cột (có ngoại lệ khi trùng BaseEntity)."""
+    return PROP_OVERRIDES.get((t.full, col), prop_name(col))
+
+
+for _t in tables:
+    for _c in _t.columns:
+        if _c.name not in BASE_COLS:
+            assert cprop(_t, _c.name) not in BASE_PROPS, (_t.full, _c.name)
+
+# Cột khóa tự nhiên được FK trỏ tới -> alternate key
+alt_keys = defaultdict(list)
+for _t in tables:
+    for _fk in _t.fks:
+        if _fk.ref_columns != by_full[_fk.ref_table].pk and _fk.ref_columns not in alt_keys[_fk.ref_table]:
+            alt_keys[_fk.ref_table].append(_fk.ref_columns)
+
+SCHEMA_TABLE_RE = re.compile(r'\b(' + '|'.join(SCHEMA_NS) + r')\.(\w+)\b')
+NEW_NAME = {t.full: t.table for t in tables}
+
+
+def flat_sql(s: str) -> str:
+    """Bỏ tiền tố schema trong SQL thô: iam.users -> users, core.set_updated_at -> set_updated_at."""
+    s = s.replace('core.set_updated_at', 'set_updated_at')
+    s = s.replace('mdm.next_document_number', 'next_document_number')
+    return SCHEMA_TABLE_RE.sub(lambda m: NEW_NAME.get(m.group(0), m.group(0)), s)
 
 
 # ---------------------------------------------------------------- helpers
@@ -136,34 +219,8 @@ def initializer(c, clr: str):
     raise ValueError(f'cannot derive initializer for {c.name} default {d}')
 
 
-def has_cols(t, names, pred=None):
-    cols = {c.name: c for c in t.columns}
-    return all(n in cols for n in names)
-
-
 def base_class(t):
-    cols = {c.name: c for c in t.columns}
-    audit = (has_cols(t, AUDIT_COLS)
-             and cols['created_at'].sql_type == 'timestamptz' and cols['created_at'].not_null
-             and cols['created_by'].sql_type == 'uuid' and not cols['created_by'].not_null
-             and cols['updated_at'].sql_type == 'timestamptz' and not cols['updated_at'].not_null
-             and cols['updated_by'].sql_type == 'uuid' and not cols['updated_by'].not_null
-             and not any(c.ref_table for c in t.columns if c.name in AUDIT_COLS))
-    soft = (has_cols(t, SOFT_COLS) and cols['is_deleted'].sql_type == 'boolean' and cols['is_deleted'].not_null)
-    if t.partition_by:
-        return None, set()
-    if audit and soft:
-        return 'SoftDeletableEntity', set(AUDIT_COLS + SOFT_COLS)
-    if audit:
-        return 'AuditableEntity', set(AUDIT_COLS)
-    return None, set()
-
-
-def tenant_iface(t):
-    for c in t.columns:
-        if c.name == 'tenant_id' and c.sql_type == 'uuid':
-            return 'IMustHaveTenant' if c.not_null else 'IMayHaveTenant'
-    return None
+    return 'BaseEntity', set(BASE_COLS)
 
 
 def ns(schema):
@@ -178,7 +235,7 @@ class Nav:
 
 props_of = {}
 for t in tables:
-    props_of[t.full] = {prop_name(c.name) for c in t.columns} | {'RowVersion'}
+    props_of[t.full] = {cprop(t, c.name) for c in t.columns} | BASE_PROPS
 
 navs = defaultdict(list)          # dependent table -> [Nav]
 inverses = defaultdict(list)      # principal table -> [Nav]
@@ -225,10 +282,7 @@ def emit_entity(t):
     cname = cls[t.full]
     base, skip = base_class(t)
     ifaces = []
-    ti = tenant_iface(t)
-    if ti:
-        ifaces.append(ti)
-    inherit = ([base] if base else []) + ifaces
+    inherit = [base]
     usings = set()
     lines = []
     for c in t.columns:
@@ -253,7 +307,7 @@ def emit_entity(t):
         if extra:
             doc.append('    /// <remarks>' + '; '.join(extra) + '</remarks>')
         setter = 'get; set;'
-        line = f'    public {clr} {prop_name(c.name)} {{ {setter} }}'
+        line = f'    public {clr} {cprop(t, c.name)} {{ {setter} }}'
         if init:
             line += f' = {init};'
         lines.append('\n'.join(doc) + '\n' + line)
@@ -284,10 +338,12 @@ def emit_entity(t):
         out += '\n'
     out += f'namespace {ns(t.schema)};\n\n'
     summary = t.comment or t.full
-    out += f'/// <summary>\n/// {xml(summary)}\n/// </summary>\n/// <remarks>Bảng <c>{t.full}</c>'
-    if t.partition_by:
-        out += f'; partition RANGE theo <c>{t.partition_by}</c> (tạo bằng SQL thô, không qua EF migration)'
+    out += f'/// <summary>\n/// {xml(summary)}\n/// </summary>\n/// <remarks>Bảng <c>{t.table}</c> (phân hệ {t.schema})'
+    if t.soft_delete:
+        out += '; Remove() = xóa mềm'
     out += '.</remarks>\n'
+    if t.soft_delete:
+        out += '[SoftDelete]\n'
     out += f'public class {cname}' + (' : ' + ', '.join(inherit) if inherit else '') + '\n{\n'
     out += '\n\n'.join(lines)
     if nav_lines:
@@ -312,13 +368,13 @@ def is_simple_index(t, ix):
 def member(t, col):
     if (t.full, col) in SHADOW_COLS:
         return None
-    return prop_name(col)
+    return cprop(t, col)
 
 
 def key_expr(t, cols):
     names = [member(t, c) for c in cols]
     if any(n is None for n in names):
-        return 'new[] { ' + ', '.join(cs_str(SHADOW_COLS[(t.full, c)][0] if member(t, c) is None else prop_name(c)) for c in cols) + ' }', True
+        return 'new[] { ' + ', '.join(cs_str(SHADOW_COLS[(t.full, c)][0] if member(t, c) is None else cprop(t, c)) for c in cols) + ' }', True
     if len(names) == 1:
         return f'x => x.{names[0]}', False
     return 'x => new { ' + ', '.join(f'x.{n}' for n in names) + ' }', False
@@ -339,19 +395,17 @@ def emit_config(t):
         tb.append(f'tb.HasComment({cs_str(t.comment)});')
     for c in t.columns:
         if c.check:
-            tb.append(f'tb.HasCheckConstraint({cs_str(f"{t.name}_{c.name}_check")}, {cs_str(c.check)});')
+            tb.append(f'tb.HasCheckConstraint({cs_str(f"{t.table}_{c.name}_check")}, {cs_str(c.check)});')
     for i, (name, expr) in enumerate(t.checks):
-        tb.append(f'tb.HasCheckConstraint({cs_str(name or f"{t.name}_check{i or ""}")}, {cs_str(expr)});')
-    if t.partition_by:
-        tb.append('tb.ExcludeFromMigrations(); // bảng partition: tạo bằng Sql/010_partitioned_tables.sql')
-    a(f'        builder.ToTable({cs_str(t.name)}, {cs_str(t.schema)}, tb =>')
+        tb.append(f'tb.HasCheckConstraint({cs_str(name or f"{t.table}_check{i or ""}")}, {cs_str(expr)});')
+    a(f'        builder.ToTable({cs_str(t.table)}, tb =>')
     a('        {')
     for x in tb:
         a('            ' + x)
     a('        });')
     a('')
     kexpr, shadow = key_expr(t, t.pk)
-    a(f'        builder.HasKey({kexpr}).HasName({cs_str(t.name + "_pkey")});')
+    a(f'        builder.HasKey({kexpr}).HasName({cs_str(t.table + "_pkey")});')
     a('')
     # columns
     for order, c in enumerate(t.columns):
@@ -360,7 +414,7 @@ def emit_config(t):
             usings.add('NpgsqlTypes')
             chain = [f'builder.Property<{shadow_info[1]}>({cs_str(shadow_info[0])})']
         else:
-            chain = [f'builder.Property(x => x.{prop_name(c.name)})']
+            chain = [f'builder.Property(x => x.{cprop(t, c.name)})']
         chain.append(f'.HasColumnName({cs_str(c.name)})')
         chain.append(f'.HasColumnType({cs_str(c.sql_type)})')
         chain.append(f'.HasColumnOrder({order})')
@@ -392,14 +446,22 @@ def emit_config(t):
             a('            ' + ch)
         L[-1] += ';'
     a('')
-    # unique constraints -> unique indexes
+    # unique constraints -> unique indexes; khóa được FK trỏ tới -> alternate key (UNIQUE constraint)
+    def emit_unique(cols, name):
+        kexpr, _ = key_expr(t, cols)
+        if cols in alt_keys[t.full]:
+            a(f'        builder.HasAlternateKey({kexpr}).HasName({cs_str(name)});')
+        else:
+            a(f'        builder.HasIndex({kexpr}, {cs_str(name)}).IsUnique();')
+
     for c in t.columns:
         if c.unique and not c.pk:
-            kexpr, _ = key_expr(t, [c.name])
-            a(f'        builder.HasIndex({kexpr}, {cs_str(f"{t.name}_{c.name}_key")}).IsUnique();')
+            emit_unique([c.name], f"{t.table}_{c.name}_key")
     for name, cols in t.uniques:
-        kexpr, _ = key_expr(t, cols)
-        a(f'        builder.HasIndex({kexpr}, {cs_str(name or (t.name + "_" + "_".join(cols) + "_key"))}).IsUnique();')
+        emit_unique(cols, name or (t.table + "_" + "_".join(cols) + "_key"))
+    declared = [[c.name] for c in t.columns if c.unique and not c.pk] + [cols for _, cols in t.uniques]
+    for cols in alt_keys[t.full]:
+        assert cols in declared, (t.full, cols)
     # indexes
     if not t.partition_by:
         for ix in t.indexes:
@@ -436,12 +498,12 @@ def emit_config(t):
         pcls = cls[n.principal.full]
         usings.add(ns(n.principal.schema))
         inv = f'.WithMany(p => p.{n.inverse})' if n.inverse else '.WithMany()'
-        fkname = n.fk.name or f'{t.name}_{col}_fkey'
+        fkname = n.fk.name or f'{t.table}_{col}_fkey'
         behavior = 'Cascade' if n.fk.on_delete == 'CASCADE' else 'NoAction'
         rel.append(f'        builder.HasOne(x => x.{n.dep_name})\n'
                    f'            {inv}\n'
-                   f'            .HasForeignKey(x => x.{prop_name(col)})\n'
-                   + (f'            .HasPrincipalKey(p => p.{prop_name(n.fk.ref_columns[0])})\n' if n.fk.ref_columns != n.principal.pk else '')
+                   f'            .HasForeignKey(x => x.{cprop(t, col)})\n'
+                   + (f'            .HasPrincipalKey(p => p.{cprop(n.principal, n.fk.ref_columns[0])})\n' if n.fk.ref_columns != n.principal.pk else '')
                    + f'            .HasConstraintName({cs_str(fkname)})\n'
                    f'            .OnDelete(DeleteBehavior.{behavior});')
     if rel:
@@ -451,7 +513,7 @@ def emit_config(t):
     for u in sorted(usings):
         out += f'using {u};\n'
     out += f'\nnamespace CorePlatformApi.Infrastructure.Persistence.Configurations.{SCHEMA_NS[t.schema]};\n\n'
-    out += f'/// <summary>\n/// Cấu hình EF Core cho <c>{t.full}</c>.\n/// </summary>\n'
+    out += f'/// <summary>\n/// Cấu hình EF Core cho bảng <c>{t.table}</c>.\n/// </summary>\n'
     out += f'public sealed class {cname}Configuration : IEntityTypeConfiguration<{cname}>\n{{\n'
     out += f'    public void Configure(EntityTypeBuilder<{cname}> builder)\n    {{\n'
     out += '\n'.join(L) + '\n    }\n}\n'
@@ -492,59 +554,45 @@ def emit_context():
 # ---------------------------------------------------------------- raw SQL scripts
 def emit_sql():
     out_dir = os.path.join(INFRA, 'Persistence', 'Sql')
-    hdr = '-- Sinh tự động từ docs/base_erp_core.sql — các phần EF Core không biểu diễn được.\n'
-    # 000: schemas comments + core functions
-    m_schema_comments = re.findall(r'^COMMENT ON SCHEMA .*;$', src, re.M)
+    hdr = ('-- Sinh tự động từ docs/base_erp_core.sql (đã làm phẳng về schema public) — '
+           'các phần EF Core không biểu diễn được.\n')
+    # 000: hàm trigger set_updated_at (bỏ schema + hàm tạo partition vì không còn bảng partition)
     fstart = src.index('CREATE OR REPLACE FUNCTION core.set_updated_at')
-    fend = src.index("COMMENT ON FUNCTION core.create_monthly_partitions")
+    fend = src.index("COMMENT ON FUNCTION core.set_updated_at")
     fend = src.index('\n', fend) + 1
-    core_fn = src[fstart:fend]
-    s000 = hdr + 'CREATE SCHEMA IF NOT EXISTS core;\n' + \
-        ''.join(f'CREATE SCHEMA IF NOT EXISTS {s};\n' for s in SCHEMA_NS) + '\n' + \
-        '\n'.join(m_schema_comments) + '\n\n' + core_fn
-    write(os.path.join(out_dir, '000_core_functions.sql'), s000)
-    # 010: partitioned tables
-    parts = [hdr]
-    for t in tables:
-        if not t.partition_by:
-            continue
-        parts.append(t.raw)
-        for line in src.split('\n'):
-            if line.startswith((f'COMMENT ON TABLE {t.full} ', f'COMMENT ON COLUMN {t.full}.')):
-                parts.append(line)
-        for ix in t.indexes:
-            parts.append(ix.raw)
-        parts.append('')
-    for line in src.split('\n'):
-        if re.match(r'^CREATE TABLE \w+\.\w+_default\s+PARTITION OF', line) or line.startswith('SELECT core.create_monthly_partitions'):
-            parts.append(line)
-    write(os.path.join(out_dir, '010_partitioned_tables.sql'), '\n'.join(parts) + '\n')
+    write(os.path.join(out_dir, '000_core_functions.sql'), hdr + flat_sql(src[fstart:fend]))
+    stale = os.path.join(out_dir, '010_partitioned_tables.sql')
+    if os.path.exists(stale):
+        os.remove(stale)
     # 020: expression indexes
-    write(os.path.join(out_dir, '020_expression_indexes.sql'), hdr + '\n'.join(raw_indexes) + '\n')
-    # 030: updated_at triggers (idempotent)
+    write(os.path.join(out_dir, '020_expression_indexes.sql'), hdr + flat_sql('\n'.join(raw_indexes)) + '\n')
+    # 030: updated_at triggers (idempotent) cho mọi bảng trong public
     dstart = src.index('DO $$\nDECLARE r record;')
     dend = src.index('END $$;', dstart) + len('END $$;')
     block = src[dstart:dend].replace("EXECUTE format('CREATE TRIGGER", "EXECUTE format('CREATE OR REPLACE TRIGGER")
-    write(os.path.join(out_dir, '030_updated_at_triggers.sql'), hdr + block + '\n')
+    block, n = re.subn(r"c\.table_schema IN \([^)]*\)", "c.table_schema = 'public'", block)
+    assert n == 1, 'trigger block schema filter'
+    write(os.path.join(out_dir, '030_updated_at_triggers.sql'), hdr + flat_sql(block) + '\n')
     # 040: document numbering function
     nstart = src.index('CREATE OR REPLACE FUNCTION mdm.next_document_number(')
     nend = src.index('COMMENT ON FUNCTION mdm.next_document_number')
     nend = src.index('\n', nend) + 1
-    write(os.path.join(out_dir, '040_document_number_function.sql'), hdr + src[nstart:nend])
+    write(os.path.join(out_dir, '040_document_number_function.sql'), hdr + flat_sql(src[nstart:nend]))
     # 050: seed
     sstart = src.index('INSERT INTO mdm.currencies')
-    write(os.path.join(out_dir, '050_seed_data.sql'), hdr + src[sstart:].rstrip() + '\n')
+    write(os.path.join(out_dir, '050_seed_data.sql'), hdr + flat_sql(src[sstart:].rstrip()) + '\n')
     # 060: pgvector (conditional)
     vt = by_full[VECTOR_TABLE]
     vc = vt.col(VECTOR_COL)
     vix = next(ix for ix in vt.indexes if ix.name == 'ix_ai_kb_chunks_embedding')
+    vtable = vt.table
     s060 = hdr + f"""-- pgvector là extension ngoài (không có sẵn trong PostgreSQL). Script idempotent:
---   * Nếu server đã cài pgvector  -> tạo extension, cột {VECTOR_TABLE}.{VECTOR_COL} và index HNSW.
+--   * Nếu server đã cài pgvector  -> tạo extension, cột {vtable}.{VECTOR_COL} và index HNSW.
 --   * Nếu chưa cài                -> bỏ qua kèm NOTICE; ứng dụng chạy lại script này mỗi lần khởi động.
 DO $pgv$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
-        RAISE NOTICE 'pgvector chưa được cài trên server — bỏ qua cột {VECTOR_TABLE}.{VECTOR_COL}';
+        RAISE NOTICE 'pgvector chưa được cài trên server — bỏ qua cột {vtable}.{VECTOR_COL}';
         RETURN;
     END IF;
 
@@ -552,13 +600,13 @@ BEGIN
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = '{vt.schema}' AND table_name = '{vt.name}' AND column_name = '{VECTOR_COL}'
+        WHERE table_schema = 'public' AND table_name = '{vtable}' AND column_name = '{VECTOR_COL}'
     ) THEN
-        EXECUTE 'ALTER TABLE {VECTOR_TABLE} ADD COLUMN {VECTOR_COL} {vc.sql_type}';
-        EXECUTE $c$COMMENT ON COLUMN {VECTOR_TABLE}.{VECTOR_COL} IS '{vc.comment.replace("'", "''")}'$c$;
+        EXECUTE 'ALTER TABLE {vtable} ADD COLUMN {VECTOR_COL} {vc.sql_type}';
+        EXECUTE $c$COMMENT ON COLUMN {vtable}.{VECTOR_COL} IS '{vc.comment.replace("'", "''")}'$c$;
     END IF;
 
-    EXECUTE '{vix.raw.rstrip(';').replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS')}';
+    EXECUTE '{flat_sql(vix.raw.rstrip(';')).replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS')}';
 END $pgv$;
 """
     write(os.path.join(out_dir, '060_pgvector.sql'), s060)
@@ -574,5 +622,4 @@ emit_sql()
 print('entities:', len(tables))
 print('raw indexes:', len(raw_indexes))
 for t in tables:
-    b, _ = base_class(t)
-    print(f'{t.full:40} {cls[t.full]:32} base={b} tenant={tenant_iface(t)} navs={[n.dep_name for n in navs[t.full]]} inv={[n.inverse for n in inverses[t.full]]}')
+    print(f'{t.full:40} -> {t.table:34} {cls[t.full]:32} soft={t.soft_delete} alt={alt_keys[t.full]}')

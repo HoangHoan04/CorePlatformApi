@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,21 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Định nghĩa quy trình duyệt cho một loại chứng từ (đơn nghỉ phép, đề xuất mua hàng, chiết khấu vượt khung...)
 /// </summary>
-/// <remarks>Bảng <c>workflow.definitions</c>.</remarks>
-public class WorkflowDefinition : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>workflow_definitions</c> (phân hệ workflow); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class WorkflowDefinition : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Loại chứng từ áp dụng
     /// </summary>

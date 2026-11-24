@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.tax_rates</c>.
+/// Cấu hình EF Core cho bảng <c>tax_rates</c>.
 /// </summary>
 public sealed class TaxRateConfiguration : IEntityTypeConfiguration<TaxRate>
 {
     public void Configure(EntityTypeBuilder<TaxRate> builder)
     {
-        builder.ToTable("tax_rates", "mdm", tb =>
+        builder.ToTable("tax_rates", tb =>
         {
             tb.HasComment("Biểu thuế suất có hiệu lực theo thời gian (VD: VAT giảm 8% theo từng nghị định)");
             tb.HasCheckConstraint("tax_rates_rate_check", "rate >= 0");
@@ -135,6 +135,24 @@ public sealed class TaxRateConfiguration : IEntityTypeConfiguration<TaxRate>
             .HasColumnType("uuid")
             .HasColumnOrder(17)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(18)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(19)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(20)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.TenantId, x.Code, x.EffectiveFrom }, "uq_tax_rates")
             .IsUnique()
@@ -148,6 +166,7 @@ public sealed class TaxRateConfiguration : IEntityTypeConfiguration<TaxRate>
         builder.HasOne(x => x.TaxType)
             .WithMany()
             .HasForeignKey(x => x.TaxTypeCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("tax_rates_tax_type_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
     }

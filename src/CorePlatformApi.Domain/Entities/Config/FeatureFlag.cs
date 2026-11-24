@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,8 +7,8 @@ namespace CorePlatformApi.Domain.Entities.Config;
 /// <summary>
 /// Feature flag bật/tắt tính năng không cần deploy
 /// </summary>
-/// <remarks>Bảng <c>config.feature_flags</c>.</remarks>
-public class FeatureFlag : AuditableEntity
+/// <remarks>Bảng <c>feature_flags</c> (phân hệ config).</remarks>
+public class FeatureFlag : BaseEntity
 {
     /// <summary>
     /// Khóa flag (wms.pos.offline_mode)

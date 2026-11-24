@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Ai;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Model AI và bảng giá để ước tính chi phí
 /// </summary>
-/// <remarks>Bảng <c>ai.models</c>.</remarks>
-public class AiModel : AuditableEntity
+/// <remarks>Bảng <c>models</c> (phân hệ ai).</remarks>
+public class AiModel : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Nhà cung cấp
     /// </summary>

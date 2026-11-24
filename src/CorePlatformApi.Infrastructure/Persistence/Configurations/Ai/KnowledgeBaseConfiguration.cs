@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Org;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.knowledge_bases</c>.
+/// Cấu hình EF Core cho bảng <c>knowledge_bases</c>.
 /// </summary>
 public sealed class KnowledgeBaseConfiguration : IEntityTypeConfiguration<KnowledgeBase>
 {
     public void Configure(EntityTypeBuilder<KnowledgeBase> builder)
     {
-        builder.ToTable("knowledge_bases", "ai", tb =>
+        builder.ToTable("knowledge_bases", tb =>
         {
             tb.HasComment("Kho tri thức RAG (nội quy, chính sách bán hàng, quy trình kho) cho chatbot nội bộ");
             tb.HasCheckConstraint("knowledge_bases_visibility_check", "visibility IN ('ALL_USERS','RESTRICTED')");

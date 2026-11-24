@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Monitor;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Monitor;
 /// <summary>
 /// Sự cố (downtime) mở/đóng tự động từ health check, phục vụ báo cáo uptime
 /// </summary>
-/// <remarks>Bảng <c>monitor.incidents</c>.</remarks>
-public class Incident : AuditableEntity
+/// <remarks>Bảng <c>incidents</c> (phân hệ monitor).</remarks>
+public class Incident : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Service
     /// </summary>

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Mdm;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>mdm.work_calendars</c>.
+/// Cấu hình EF Core cho bảng <c>work_calendars</c>.
 /// </summary>
 public sealed class WorkCalendarConfiguration : IEntityTypeConfiguration<WorkCalendar>
 {
     public void Configure(EntityTypeBuilder<WorkCalendar> builder)
     {
-        builder.ToTable("work_calendars", "mdm", tb =>
+        builder.ToTable("work_calendars", tb =>
         {
             tb.HasComment("Lịch làm việc (ca hành chính chuẩn) dùng chung: HRM tính công, WMS tính hạn giao, CRM hẹn lịch chăm sóc");
             tb.HasCheckConstraint("work_calendars_status_check", "status IN ('ACTIVE','INACTIVE')");

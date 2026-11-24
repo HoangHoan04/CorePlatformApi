@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 using CorePlatformApi.Domain.Entities.Storage;
@@ -9,20 +9,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Nhiệm vụ duyệt giao cho từng người (danh sách "Việc chờ tôi duyệt")
 /// </summary>
-/// <remarks>Bảng <c>workflow.tasks</c>.</remarks>
-public class WorkflowTask : IMustHaveTenant
+/// <remarks>Bảng <c>tasks</c> (phân hệ workflow).</remarks>
+public class WorkflowTask : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Instance
     /// </summary>
@@ -117,12 +106,6 @@ public class WorkflowTask : IMustHaveTenant
     /// </summary>
     /// <remarks>Ràng buộc: <c>acted_via IN ('WEB','MOBILE','EMAIL','API','SYSTEM')</c></remarks>
     public string? ActedVia { get; set; }
-
-    /// <summary>
-    /// Giao lúc
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

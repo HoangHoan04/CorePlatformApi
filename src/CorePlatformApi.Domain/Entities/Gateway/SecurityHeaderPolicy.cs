@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Gateway;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Bộ security header gắn vào response (HSTS, CSP, X-Frame-Options...)
 /// </summary>
-/// <remarks>Bảng <c>gateway.security_header_policies</c>.</remarks>
-public class SecurityHeaderPolicy : AuditableEntity
+/// <remarks>Bảng <c>security_header_policies</c> (phân hệ gateway).</remarks>
+public class SecurityHeaderPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã chính sách (default, strict-admin)
     /// </summary>

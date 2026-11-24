@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Workflow;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Workflow;
 /// <summary>
 /// Bước (node) trong quy trình: bắt đầu, duyệt, điều kiện, song song, thông báo, kết thúc
 /// </summary>
-/// <remarks>Bảng <c>workflow.steps</c>.</remarks>
-public class WorkflowStep : AuditableEntity
+/// <remarks>Bảng <c>steps</c> (phân hệ workflow).</remarks>
+public class WorkflowStep : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Phiên bản
     /// </summary>
@@ -149,7 +143,7 @@ public class WorkflowStep : AuditableEntity
     /// <summary>
     /// Điều hướng tới Phiên bản quy trình (qua <c>version_id</c>).
     /// </summary>
-    public WorkflowDefinitionVersion Version { get; set; } = null!;
+    public WorkflowDefinitionVersion WorkflowDefinitionVersion { get; set; } = null!;
 
     /// <summary>
     /// Danh sách WorkflowStepApprover con (qua <c>workflow.step_approvers.step_id</c>).

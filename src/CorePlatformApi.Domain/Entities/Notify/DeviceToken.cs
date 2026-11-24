@@ -1,4 +1,5 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
 namespace CorePlatformApi.Domain.Entities.Notify;
@@ -6,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Notify;
 /// <summary>
 /// Push token của thiết bị (FCM registration token / APNs device token)
 /// </summary>
-/// <remarks>Bảng <c>notify.device_tokens</c>.</remarks>
-public class DeviceToken
+/// <remarks>Bảng <c>device_tokens</c> (phân hệ notify).</remarks>
+public class DeviceToken : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>
@@ -58,17 +53,6 @@ public class DeviceToken
     /// Lần gửi thành công gần nhất
     /// </summary>
     public DateTimeOffset? LastUsedAt { get; set; }
-
-    /// <summary>
-    /// Đăng ký lúc
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-
-    /// <summary>
-    /// Cập nhật token lúc
-    /// </summary>
-    public DateTimeOffset? UpdatedAt { get; set; }
 
     #region Navigations
 

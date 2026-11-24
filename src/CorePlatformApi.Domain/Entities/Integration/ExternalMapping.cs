@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Integration;
@@ -6,20 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Ánh xạ id nội bộ ↔ id hệ thống ngoài (sản phẩm ERP ↔ item_id Shopee, NV ↔ mã trên máy chấm công)
 /// </summary>
-/// <remarks>Bảng <c>integration.external_mappings</c>.</remarks>
-public class ExternalMapping : IMustHaveTenant
+/// <remarks>Bảng <c>external_mappings</c> (phân hệ integration).</remarks>
+public class ExternalMapping : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Kết nối
     /// </summary>
@@ -55,12 +44,6 @@ public class ExternalMapping : IMustHaveTenant
     /// Đồng bộ gần nhất
     /// </summary>
     public DateTimeOffset? LastSyncedAt { get; set; }
-
-    /// <summary>
-    /// Tạo lúc
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

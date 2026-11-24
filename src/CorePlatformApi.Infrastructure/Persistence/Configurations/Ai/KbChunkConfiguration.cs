@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Ai;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -9,13 +9,13 @@ using Pgvector;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Ai;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>ai.kb_chunks</c>.
+/// Cấu hình EF Core cho bảng <c>kb_chunks</c>.
 /// </summary>
 public sealed class KbChunkConfiguration : IEntityTypeConfiguration<KbChunk>
 {
     public void Configure(EntityTypeBuilder<KbChunk> builder)
     {
-        builder.ToTable("kb_chunks", "ai", tb =>
+        builder.ToTable("kb_chunks", tb =>
         {
             tb.HasComment("Chunk văn bản + vector embedding (pgvector) + full-text để hybrid search");
         });
@@ -30,24 +30,24 @@ public sealed class KbChunkConfiguration : IEntityTypeConfiguration<KbChunk>
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .IsRequired()
+            .HasComment("Tenant");
         builder.Property(x => x.DocumentId)
             .HasColumnName("document_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Tài liệu");
         builder.Property(x => x.KnowledgeBaseId)
             .HasColumnName("knowledge_base_id")
             .HasColumnType("uuid")
-            .HasColumnOrder(2)
-            .IsRequired()
-            .HasComment("Kho (denormalize để lọc nhanh)");
-        builder.Property(x => x.TenantId)
-            .HasColumnName("tenant_id")
-            .HasColumnType("uuid")
             .HasColumnOrder(3)
             .IsRequired()
-            .HasComment("Tenant");
+            .HasComment("Kho (denormalize để lọc nhanh)");
         builder.Property(x => x.ChunkIndex)
             .HasColumnName("chunk_index")
             .HasColumnType("int")
@@ -109,6 +109,39 @@ public sealed class KbChunkConfiguration : IEntityTypeConfiguration<KbChunk>
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
             .HasComment("Tạo lúc");
+        builder.Property(x => x.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(13)
+            .HasComment("Người tạo (users.id); NULL nếu hệ thống tạo");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(14)
+            .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
+        builder.Property(x => x.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(15)
+            .HasComment("Người cập nhật gần nhất (users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(16)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(17)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(18)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.DocumentId, x.ChunkIndex }, "uq_ai_kb_chunks").IsUnique();
         builder.HasIndex(new[] { "ContentTsv" }, "ix_ai_kb_chunks_tsv")

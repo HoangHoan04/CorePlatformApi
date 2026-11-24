@@ -14,13 +14,3 @@ GET {{CorePlatformApi.WebApi_HostAddress}}/api/system/entities
 Accept: application/json
 
 ###
-
-GET {{CorePlatformApi.WebApi_HostAddress}}/api/master-data/countries
-Accept: application/json
-
-###
-
-GET {{CorePlatformApi.WebApi_HostAddress}}/api/master-data/uoms
-Accept: application/json
-
-###

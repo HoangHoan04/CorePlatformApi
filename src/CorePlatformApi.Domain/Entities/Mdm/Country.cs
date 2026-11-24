@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,8 +6,8 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Danh mục quốc gia theo chuẩn ISO 3166
 /// </summary>
-/// <remarks>Bảng <c>mdm.countries</c>.</remarks>
-public class Country : AuditableEntity
+/// <remarks>Bảng <c>countries</c> (phân hệ mdm).</remarks>
+public class Country : BaseEntity
 {
     /// <summary>
     /// Mã ISO 3166-1 alpha-2 (VN, US, JP...)

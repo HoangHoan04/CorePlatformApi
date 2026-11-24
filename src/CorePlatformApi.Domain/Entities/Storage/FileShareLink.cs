@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Storage;
 
 /// <summary>
 /// Link chia sẻ file có kiểm soát (hết hạn, giới hạn lượt tải, mật khẩu) — khác presigned URL ngắn hạn của S3
 /// </summary>
-/// <remarks>Bảng <c>storage.file_share_links</c>.</remarks>
-public class FileShareLink
+/// <remarks>Bảng <c>file_share_links</c> (phân hệ storage).</remarks>
+public class FileShareLink : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// File
     /// </summary>
@@ -54,17 +50,6 @@ public class FileShareLink
     /// Thu hồi lúc
     /// </summary>
     public DateTimeOffset? RevokedAt { get; set; }
-
-    /// <summary>
-    /// Người tạo link
-    /// </summary>
-    public Guid? CreatedBy { get; set; }
-
-    /// <summary>
-    /// Thời điểm tạo
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

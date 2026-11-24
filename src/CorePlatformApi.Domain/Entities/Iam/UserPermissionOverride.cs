@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Iam;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Quyền gán trực tiếp cho user (cộng thêm hoặc loại trừ so với vai trò)
 /// </summary>
-/// <remarks>Bảng <c>iam.user_permission_overrides</c>.</remarks>
-public class UserPermissionOverride : AuditableEntity
+/// <remarks>Bảng <c>user_permission_overrides</c> (phân hệ iam).</remarks>
+public class UserPermissionOverride : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// User
     /// </summary>

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using System.Net;
 
@@ -7,25 +7,14 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Nhật ký request inbound nhận được (lưu raw để đối soát, xử lý lại, chống trùng)
 /// </summary>
-/// <remarks>Bảng <c>integration.inbound_requests</c>.</remarks>
-public class InboundRequest : IMayHaveTenant
+/// <remarks>Bảng <c>inbound_requests</c> (phân hệ integration).</remarks>
+public class InboundRequest : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Nguồn
     /// </summary>
     /// <remarks>FK → <c>integration.inbound_sources(id)</c></remarks>
     public Guid SourceId { get; set; }
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// Id giao dịch phía ngoài (mã GD ngân hàng, order_sn) để chống trùng

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Chính sách CORS (toàn hệ thống hoặc theo tenant khi tenant có domain riêng)
 /// </summary>
-/// <remarks>Bảng <c>gateway.cors_policies</c>.</remarks>
-public class CorsPolicy : AuditableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>cors_policies</c> (phân hệ gateway).</remarks>
+public class CorsPolicy : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = mặc định)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Mã chính sách
     /// </summary>

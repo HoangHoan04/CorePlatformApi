@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Integration;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Service nào tiêu thụ event nào (bản đồ luồng dữ liệu giữa các phân hệ)
 /// </summary>
-/// <remarks>Bảng <c>integration.event_subscriptions</c>.</remarks>
-public class EventSubscription : AuditableEntity
+/// <remarks>Bảng <c>event_subscriptions</c> (phân hệ integration).</remarks>
+public class EventSubscription : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Event
     /// </summary>

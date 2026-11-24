@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Audit;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>audit.audit_policies</c>.
+/// Cấu hình EF Core cho bảng <c>audit_policies</c>.
 /// </summary>
 public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPolicy>
 {
     public void Configure(EntityTypeBuilder<AuditPolicy> builder)
     {
-        builder.ToTable("audit_policies", "audit", tb =>
+        builder.ToTable("audit_policies", tb =>
         {
             tb.HasComment("Cấu hình đối tượng cần lưu vết thay đổi và trường cần che (lương, CCCD...)");
         });
@@ -27,22 +27,27 @@ public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPol
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever()
             .HasComment("Khóa chính");
+        builder.Property(x => x.TenantId)
+            .HasColumnName("tenant_id")
+            .HasColumnType("uuid")
+            .HasColumnOrder(1)
+            .HasComment("Tenant sở hữu (tenants.id); NULL = dữ liệu dùng chung toàn hệ thống");
         builder.Property(x => x.ModuleCode)
             .HasColumnName("module_code")
             .HasColumnType("varchar(30)")
-            .HasColumnOrder(1)
+            .HasColumnOrder(2)
             .IsRequired()
             .HasComment("Phân hệ");
         builder.Property(x => x.EntityType)
             .HasColumnName("entity_type")
             .HasColumnType("varchar(100)")
-            .HasColumnOrder(2)
+            .HasColumnOrder(3)
             .IsRequired()
             .HasComment("Loại đối tượng (EMPLOYEE, SALARY, STOCK_ADJUSTMENT)");
         builder.Property(x => x.IsEnabled)
             .HasColumnName("is_enabled")
             .HasColumnType("boolean")
-            .HasColumnOrder(3)
+            .HasColumnOrder(4)
             .IsRequired()
             .HasDefaultValueSql("true")
             .ValueGeneratedNever()
@@ -50,7 +55,7 @@ public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPol
         builder.Property(x => x.TrackActions)
             .HasColumnName("track_actions")
             .HasColumnType("text[]")
-            .HasColumnOrder(4)
+            .HasColumnOrder(5)
             .IsRequired()
             .HasDefaultValueSql("'{INSERT,UPDATE,DELETE}'")
             .ValueGeneratedNever()
@@ -58,12 +63,12 @@ public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPol
         builder.Property(x => x.IncludeFields)
             .HasColumnName("include_fields")
             .HasColumnType("text[]")
-            .HasColumnOrder(5)
+            .HasColumnOrder(6)
             .HasComment("Chỉ ghi các trường này (NULL = tất cả)");
         builder.Property(x => x.ExcludeFields)
             .HasColumnName("exclude_fields")
             .HasColumnType("text[]")
-            .HasColumnOrder(6)
+            .HasColumnOrder(7)
             .IsRequired()
             .HasDefaultValueSql("'{updated_at,updated_by}'")
             .ValueGeneratedNever()
@@ -71,12 +76,12 @@ public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPol
         builder.Property(x => x.MaskedFields)
             .HasColumnName("masked_fields")
             .HasColumnType("text[]")
-            .HasColumnOrder(7)
+            .HasColumnOrder(8)
             .HasComment("Trường được ghi nhưng che giá trị (***), VD: base_salary, id_number");
         builder.Property(x => x.RetentionDays)
             .HasColumnName("retention_days")
             .HasColumnType("int")
-            .HasColumnOrder(8)
+            .HasColumnOrder(9)
             .IsRequired()
             .HasDefaultValueSql("3650")
             .ValueGeneratedNever()
@@ -84,7 +89,7 @@ public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPol
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(9)
+            .HasColumnOrder(10)
             .IsRequired()
             .HasDefaultValueSql("now()")
             .ValueGeneratedNever()
@@ -92,18 +97,36 @@ public sealed class AuditPolicyConfiguration : IEntityTypeConfiguration<AuditPol
         builder.Property(x => x.CreatedBy)
             .HasColumnName("created_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(10)
+            .HasColumnOrder(11)
             .HasComment("Người tạo (iam.users.id); NULL nếu hệ thống tạo");
         builder.Property(x => x.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamptz")
-            .HasColumnOrder(11)
+            .HasColumnOrder(12)
             .HasComment("Thời điểm cập nhật gần nhất (trigger tự gán)");
         builder.Property(x => x.UpdatedBy)
             .HasColumnName("updated_by")
             .HasColumnType("uuid")
-            .HasColumnOrder(12)
+            .HasColumnOrder(13)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(14)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(15)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(16)
+            .HasComment("Người xóa mềm (users.id)");
 
         builder.HasIndex(x => new { x.ModuleCode, x.EntityType }, "uq_audit_policies").IsUnique();
     }

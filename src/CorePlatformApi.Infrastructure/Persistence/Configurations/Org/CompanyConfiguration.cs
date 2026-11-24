@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Mdm;
 using CorePlatformApi.Domain.Entities.Org;
 using CorePlatformApi.Domain.Entities.Storage;
@@ -8,13 +8,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Org;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>org.companies</c>.
+/// Cấu hình EF Core cho bảng <c>companies</c>.
 /// </summary>
 public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
 {
     public void Configure(EntityTypeBuilder<Company> builder)
     {
-        builder.ToTable("companies", "org", tb =>
+        builder.ToTable("companies", tb =>
         {
             tb.HasComment("Công ty con / pháp nhân thuộc tenant. Hỗ trợ công ty mẹ - con nhiều cấp qua parent_id");
             tb.HasCheckConstraint("companies_fiscal_year_start_month_check", "fiscal_year_start_month BETWEEN 1 AND 12");
@@ -251,11 +251,13 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.HasOne(x => x.Country)
             .WithMany()
             .HasForeignKey(x => x.CountryCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("companies_country_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.BaseCurrency)
             .WithMany()
             .HasForeignKey(x => x.BaseCurrencyCode)
+            .HasPrincipalKey(p => p.Code)
             .HasConstraintName("companies_base_currency_code_fkey")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(x => x.LogoFile)

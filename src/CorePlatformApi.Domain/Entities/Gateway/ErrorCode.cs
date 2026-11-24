@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,8 +7,8 @@ namespace CorePlatformApi.Domain.Entities.Gateway;
 /// <summary>
 /// Mã lỗi chuẩn hóa toàn hệ sinh thái. Response lỗi: {success:false, code, message, traceId, errors[]}
 /// </summary>
-/// <remarks>Bảng <c>gateway.error_codes</c>.</remarks>
-public class ErrorCode : AuditableEntity
+/// <remarks>Bảng <c>error_codes</c> (phân hệ gateway).</remarks>
+public class ErrorCode : BaseEntity
 {
     /// <summary>
     /// Mã lỗi (AUTH_TOKEN_EXPIRED, HRM_LEAVE_BALANCE_INSUFFICIENT)

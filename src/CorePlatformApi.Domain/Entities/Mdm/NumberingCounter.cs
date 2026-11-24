@@ -1,18 +1,14 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
+using CorePlatformApi.Domain.Common;
+
 namespace CorePlatformApi.Domain.Entities.Mdm;
 
 /// <summary>
 /// Bộ đếm hiện tại của từng quy tắc theo kỳ (năm/tháng/ngày) và phạm vi (công ty/chi nhánh)
 /// </summary>
-/// <remarks>Bảng <c>mdm.numbering_counters</c>.</remarks>
-public class NumberingCounter
+/// <remarks>Bảng <c>numbering_counters</c> (phân hệ mdm).</remarks>
+public class NumberingCounter : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Quy tắc
     /// </summary>
@@ -34,12 +30,6 @@ public class NumberingCounter
     /// Giá trị đã cấp gần nhất
     /// </summary>
     public long CurrentValue { get; set; }
-
-    /// <summary>
-    /// Lần cấp gần nhất
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>now()</c></remarks>
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     #region Navigations
 

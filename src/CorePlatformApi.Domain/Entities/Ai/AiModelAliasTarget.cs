@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Ai;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Ai;
 /// <summary>
 /// Danh sách model đích của alias theo thứ tự ưu tiên (model chính → fallback)
 /// </summary>
-/// <remarks>Bảng <c>ai.model_alias_targets</c>.</remarks>
-public class AiModelAliasTarget : AuditableEntity
+/// <remarks>Bảng <c>model_alias_targets</c> (phân hệ ai).</remarks>
+public class AiModelAliasTarget : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Alias
     /// </summary>

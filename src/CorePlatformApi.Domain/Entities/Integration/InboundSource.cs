@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 using System.Net;
@@ -8,21 +8,10 @@ namespace CorePlatformApi.Domain.Entities.Integration;
 /// <summary>
 /// Nguồn webhook INBOUND: cổng thanh toán (VNPay, SePay, VietQR), sàn TMĐT, máy chấm công, hóa đơn điện tử
 /// </summary>
-/// <remarks>Bảng <c>integration.inbound_sources</c>.</remarks>
-public class InboundSource : SoftDeletableEntity, IMustHaveTenant
+/// <remarks>Bảng <c>inbound_sources</c> (phân hệ integration); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class InboundSource : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Mã nguồn (SEPAY_MAIN, SHOPEE_STORE1)
     /// </summary>

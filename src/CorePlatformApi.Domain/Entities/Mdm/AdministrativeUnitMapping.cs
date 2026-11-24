@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 
 namespace CorePlatformApi.Domain.Entities.Mdm;
@@ -6,15 +6,9 @@ namespace CorePlatformApi.Domain.Entities.Mdm;
 /// <summary>
 /// Bảng ánh xạ đơn vị hành chính cũ → mới (sau sáp nhập), dùng để chuyển đổi địa chỉ lịch sử
 /// </summary>
-/// <remarks>Bảng <c>mdm.administrative_unit_mappings</c>.</remarks>
-public class AdministrativeUnitMapping : AuditableEntity
+/// <remarks>Bảng <c>administrative_unit_mappings</c> (phân hệ mdm).</remarks>
+public class AdministrativeUnitMapping : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Đơn vị cũ
     /// </summary>

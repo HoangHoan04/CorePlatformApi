@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Entities.Notify;
 using CorePlatformApi.Domain.Entities.Org;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CorePlatformApi.Infrastructure.Persistence.Configurations.Notify;
 
 /// <summary>
-/// Cấu hình EF Core cho <c>notify.smtp_configs</c>.
+/// Cấu hình EF Core cho bảng <c>smtp_configs</c>.
 /// </summary>
 public sealed class SmtpConfigConfiguration : IEntityTypeConfiguration<SmtpConfig>
 {
     public void Configure(EntityTypeBuilder<SmtpConfig> builder)
     {
-        builder.ToTable("smtp_configs", "notify", tb =>
+        builder.ToTable("smtp_configs", tb =>
         {
             tb.HasComment("Cấu hình SMTP theo hệ thống, tenant hoặc từng công ty");
             tb.HasCheckConstraint("smtp_configs_provider_check", "provider IN ('SMTP','SES','SENDGRID','MAILGUN','GMAIL_API','M365')");
@@ -147,6 +147,24 @@ public sealed class SmtpConfigConfiguration : IEntityTypeConfiguration<SmtpConfi
             .HasColumnType("uuid")
             .HasColumnOrder(20)
             .HasComment("Người cập nhật gần nhất (iam.users.id)");
+        builder.Property(x => x.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasColumnType("boolean")
+            .HasColumnOrder(21)
+            .IsRequired()
+            .HasDefaultValueSql("false")
+            .ValueGeneratedNever()
+            .HasComment("Cờ xóa mềm (true = đã xóa)");
+        builder.Property(x => x.DeletedAt)
+            .HasColumnName("deleted_at")
+            .HasColumnType("timestamptz")
+            .HasColumnOrder(22)
+            .HasComment("Thời điểm xóa mềm");
+        builder.Property(x => x.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasColumnType("uuid")
+            .HasColumnOrder(23)
+            .HasComment("Người xóa mềm (users.id)");
 
 
         builder.HasOne(x => x.Tenant)

@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Org;
 
@@ -7,21 +7,10 @@ namespace CorePlatformApi.Domain.Entities.Iam;
 /// <summary>
 /// Vai trò. tenant_id NULL = vai trò mẫu toàn hệ thống (template) để tenant sao chép
 /// </summary>
-/// <remarks>Bảng <c>iam.roles</c>.</remarks>
-public class Role : SoftDeletableEntity, IMayHaveTenant
+/// <remarks>Bảng <c>roles</c> (phân hệ iam); Remove() = xóa mềm.</remarks>
+[SoftDelete]
+public class Role : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
-    /// <summary>
-    /// Tenant (NULL = vai trò mẫu hệ thống)
-    /// </summary>
-    /// <remarks>FK → <c>org.tenants(id)</c></remarks>
-    public Guid? TenantId { get; set; }
-
     /// <summary>
     /// Vai trò riêng của một công ty (NULL = dùng toàn tenant)
     /// </summary>

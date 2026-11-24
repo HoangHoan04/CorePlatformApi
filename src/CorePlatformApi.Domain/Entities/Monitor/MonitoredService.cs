@@ -1,4 +1,4 @@
-// Nguồn schema: docs/base_erp_core.sql
+// Nguồn schema: docs/base_erp_core.sql (làm phẳng: một schema public, mọi bảng kế thừa BaseEntity)
 using CorePlatformApi.Domain.Common;
 using CorePlatformApi.Domain.Entities.Iam;
 
@@ -7,15 +7,9 @@ namespace CorePlatformApi.Domain.Entities.Monitor;
 /// <summary>
 /// Danh mục service trong hệ sinh thái và endpoint /health để Docker, Reverse Proxy, Uptime Monitor kiểm tra
 /// </summary>
-/// <remarks>Bảng <c>monitor.services</c>.</remarks>
-public class MonitoredService : AuditableEntity
+/// <remarks>Bảng <c>services</c> (phân hệ monitor).</remarks>
+public class MonitoredService : BaseEntity
 {
-    /// <summary>
-    /// Khóa chính
-    /// </summary>
-    /// <remarks>Mặc định DB: <c>gen_random_uuid()</c></remarks>
-    public Guid Id { get; set; } = Guid.CreateVersion7();
-
     /// <summary>
     /// Mã service (auth-api, hrm-api, core-worker, postgres, redis, rabbitmq, minio)
     /// </summary>
